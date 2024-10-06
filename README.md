@@ -1,6 +1,8 @@
 # Java lessons and tasks 2024-2025
 
 ## Git task
+Group: All Groups
+Name: A.Lukashin
 
 1. Write your github login into the google table
 2. Create your own branch: 20102_Yashnova-Daria
