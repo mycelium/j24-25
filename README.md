@@ -7,7 +7,7 @@ Name: A.Lukashin
 
 1. Write your github login into the google table
 2. Create your own branch: <group[20101, 20102]_Surname-Name>
-3. Change README.md (What did you say?)
+3. Change README.md (What did you say?) I promise i'll not touch main branch
 4. Push your changes into your branch
 5. Resolve conflict (NOW)
 
