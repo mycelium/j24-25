@@ -1,7 +1,7 @@
 # Java lessons and tasks 2024-2025
 
-Group: All Groups
-Name: A.Lukashin
+Group: 5130201/20101
+Name: D.Butenin
 
 ## Done Git task
 
