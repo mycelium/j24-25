@@ -1,5 +1,8 @@
 # Java lessons and tasks 2024-2025
 
+Group: 5130201/20102
+Name: V.Gaar
+
 ## Git task
 
 1. Write your github login into the google table
