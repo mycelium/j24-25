@@ -1,4 +1,5 @@
 package recfun
+
 import common._
 
 object Main {
@@ -9,20 +10,32 @@ object Main {
         print(pascal(col, row) + " ")
       println()
     }
+    println(balance(List('(', ')', '(', ')')))
+    println(countChange(10, List(1, 5, 10)))
   }
 
   /**
    * Exercise 1
    */
   def pascal(c: Int, r: Int): Int = {
-
+    if (c == 0 || c == r) 1
+    else pascal(c - 1, r - 1) + pascal(c, r - 1)
   }
 
   /**
    * Exercise 2 Parentheses Balancing
    */
   def balance(chars: List[Char]): Boolean = {
-   
+    @annotation.tailrec
+    def balanceRec(chars: List[Char], openCount: Int): Boolean = chars match {
+      case Nil => (openCount == 0)
+      case '(' :: tail => balanceRec(tail, openCount + 1)
+      case ')' :: tail if openCount > 0 => balanceRec(tail, openCount - 1)
+      case ')' :: tail => false
+      case _ :: tail => balanceRec(tail, openCount)
+    }
+
+    balanceRec(chars, 0)
   }
 
   /**
@@ -33,6 +46,8 @@ object Main {
    * 2 and 3: 2+3.
    */
   def countChange(money: Int, coins: List[Int]): Int = {
-
+    if (money == 0) 1
+    else if (money < 0 || coins.isEmpty) 0
+    else countChange(money, coins.tail) + countChange(money - coins.head, coins)
   }
 }
