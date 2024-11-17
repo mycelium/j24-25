@@ -8,6 +8,10 @@ object Main {
         print(pascal(col, row) + " ")
       println()
     }
+    println('\n' + "Results of the balance function")
+    println("for \"(()(()))()\": must be - true, result - " ++ balance("(()(()))()".toList).toString)
+    println("for \"(()))\": must be - false, result - " ++ balance("(()))".toList).toString)
+    println("for \"(((1)aa))\": must be - true, result - " ++ balance("(((1)aa))".toList).toString)
   }
 
   /**
@@ -28,7 +32,15 @@ object Main {
    * Exercise 2 Parentheses Balancing
    */
   def balance(chars: List[Char]): Boolean = {
-   true
+    @annotation.tailrec
+    def scopes(chars: List[Char], open: Int = 0): Boolean = chars match {
+      case Nil => open == 0 //Если весь список обработан, смотрим, равен ли open нулю
+      case _ if open < 0 => false //Как только выходим в минус по открытым скобкам - баланс нарушен
+      case '(' :: tail => scopes(tail, open+1) //Если скобка открытая, то увеличиваем счетчик
+      case ')' :: tail => scopes(tail, open-1) //Если скобка закрытая, то уменьшаем счетчик
+      case _ :: tail => scopes(tail, open)  //На случай, если в строке не только скобки
+    }
+    scopes(chars, 0)
   }
 
   /**
