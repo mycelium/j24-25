@@ -1,5 +1,4 @@
 package recfun
-import common._
 
 object Main {
   def main(args: Array[String]) {
@@ -15,14 +14,21 @@ object Main {
    * Exercise 1
    */
   def pascal(c: Int, r: Int): Int = {
+     fact(r)/(fact(r-c) * fact(c)) //Биномиальный коэффициент
+  }
 
+  def fact (n:Int) : Int ={
+    n match {
+      case 0 | 1 => 1
+      case n => n*fact(n-1)
+    }
   }
 
   /**
    * Exercise 2 Parentheses Balancing
    */
   def balance(chars: List[Char]): Boolean = {
-   
+   true
   }
 
   /**
@@ -33,6 +39,6 @@ object Main {
    * 2 and 3: 2+3.
    */
   def countChange(money: Int, coins: List[Int]): Int = {
-
+1
   }
 }
