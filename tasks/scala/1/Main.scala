@@ -12,6 +12,9 @@ object Main {
     println("for \"(()(()))()\": must be - true, result - " ++ balance("(()(()))()".toList).toString)
     println("for \"(()))\": must be - false, result - " ++ balance("(()))".toList).toString)
     println("for \"(((1)aa))\": must be - true, result - " ++ balance("(((1)aa))".toList).toString)
+    println('\n' + "Results of the balance function")
+    println("for money = 5, coins [2, 3] resul: " ++ countChange(4, List(2, 3)).toString)
+    println("for money = 24, coins [1, 2, 3, 4, 5] resul: " ++ countChange(24, List(1, 2, 3, 4, 5)).toString)
   }
 
   /**
@@ -24,7 +27,7 @@ object Main {
   def fact (n:Int) : Int ={
     n match {
       case 0 | 1 => 1
-      case n => n*fact(n-1)
+      case _ => n*fact(n-1)
     }
   }
 
@@ -51,6 +54,15 @@ object Main {
    * 2 and 3: 2+3.
    */
   def countChange(money: Int, coins: List[Int]): Int = {
-1
+    money match {
+      case m if m < 0 => 0
+      case 0 => 1
+      case _ =>
+        if (coins.isEmpty) 0
+        else {
+        //Здесь рассматриваем два случая: с использованием первой монеты и без нее
+          countChange(money - coins.head, coins) + countChange(money, coins.tail)
+        }
+    }
   }
 }
