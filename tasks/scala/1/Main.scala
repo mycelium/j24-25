@@ -9,6 +9,11 @@ object Main {
         print(pascal(col, row) + " ")
       println()
     }
+
+    println(balance(")(".toList))
+    println(balance("a(b)c".toList))
+    println(balance("()()(()())".toList))
+    println(balance("()()((())".toList))
   }
 
   /**
@@ -23,7 +28,14 @@ object Main {
    * Exercise 2 Parentheses Balancing
    */
   def balance(chars: List[Char]): Boolean = {
-   true
+    def inner(cs: List[Char], count: Int): Boolean = cs match {
+      case Nil                   => count == 0
+      case ')' :: _ if count < 1 => false
+      case ')' :: xs             => inner(xs, count - 1)
+      case '(' :: xs             => inner(xs, count + 1)
+      case _ :: xs               => inner(xs, count)
+    }
+    inner(chars, 0)
   }
 
   /**
@@ -36,4 +48,5 @@ object Main {
   def countChange(money: Int, coins: List[Int]): Int = {
     1
   }
+
 }
