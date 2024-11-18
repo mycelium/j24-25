@@ -1,3 +1,5 @@
+Group: 20101
+Name: S.Churova
 
 ## Git task
 
