@@ -4,7 +4,7 @@ object Main extends App {
   import FunSets._
   println(contains(singletonSet(1), 1))
 
-  /*
+/*
   val s1 = singletonSet(1)
   val s2 = singletonSet(2)
   val s3 = singletonSet(3)
@@ -24,9 +24,11 @@ object Main extends App {
   println("u123 evens: " + FunSets.toString(filter(u123, isEven)))
 
   println("forall u123 greater than 2: " + forall(u123, x => x > 2))
+  println("forall u123 greater than 0: " + forall(u123, x => x > 0))
   println("exists u123 even: " + exists(u123, isEven))
+  println("exists u123 greater than 4: " + exists(u123, x => x > 4))
 
   val doubled = map(u123, x => x * 2)
-  println("doubled: " + FunSets.toString(doubled))
-   */
+  println("doubled u123: " + FunSets.toString(doubled))
+ */
 }
