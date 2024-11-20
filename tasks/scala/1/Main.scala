@@ -16,6 +16,11 @@ object Main {
     println("(()(())()) is balanced: " + balance("(()(())())".toList))
     println(")( is balanced: " + balance(")(".toList))
     println("abc(d)e)f is balanced: " + balance("abc(d)e)f".toList))
+
+    println("Counting change")
+    println(countChange(4, List(1, 2)))
+    println(countChange(5, List(1, 2, 3)))
+    println(countChange(7, List(2, 3)))
   }
 
   /**
@@ -50,6 +55,9 @@ object Main {
    * 2 and 3: 2+3.
    */
   def countChange(money: Int, coins: List[Int]): Int = {
-    0
+    if (money == 0) 1
+    else if (money < 0 || coins.isEmpty) 0
+    else
+      countChange(money - coins.head, coins) + countChange(money, coins.tail)
   }
 }
