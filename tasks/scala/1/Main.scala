@@ -1,5 +1,5 @@
 package recfun
-//import common._
+import common._
 
 object Main {
   def main(args: Array[String]) {
@@ -9,6 +9,13 @@ object Main {
         print(pascal(col, row) + " ")
       println()
     }
+    println("Balance Parentheses")
+    println("() is balanced: " + balance("()".toList))
+    println("(()) is balanced: " + balance("(())".toList))
+    println("(())) is balanced: " + balance("(()))".toList))
+    println("(()(())()) is balanced: " + balance("(()(())())".toList))
+    println(")( is balanced: " + balance(")(".toList))
+    println("abc(d)e)f is balanced: " + balance("abc(d)e)f".toList))
   }
 
   /**
@@ -23,7 +30,16 @@ object Main {
    * Exercise 2 Parentheses Balancing
    */
   def balance(chars: List[Char]): Boolean = {
-    true
+    def checkBalance(chars: List[Char], openCount: Int): Boolean = {
+      if (chars.isEmpty) openCount == 0
+      else if (openCount < 0) false
+      else chars.head match {
+        case '(' => checkBalance(chars.tail, openCount + 1)
+        case ')' => checkBalance(chars.tail, openCount - 1)
+        case _   => checkBalance(chars.tail, openCount)
+      }
+    }
+    checkBalance(chars, 0)
   }
 
   /**
