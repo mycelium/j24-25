@@ -8,4 +8,5 @@ object Main extends App {
   println(contains(intersect(singletonSet(1), singletonSet(2)), 1)) // false
   println(contains(intersect(union(singletonSet(1), singletonSet(2)), singletonSet(2)), 2)) // true
   println(forall((x: Int) => x >= -20 && x % 3 == 0 && x <= 20, (x: Int) => x >= -20)) // true
+  println(exists((x: Int) => x >= -20 && x % 3 == 0 && x <= 20, (x: Int) => x % 2 == 0)) // true
 }
