@@ -1,5 +1,5 @@
 package recfun
-//import common._
+import common._
 
 object Main {
   def main(args: Array[String]) {
