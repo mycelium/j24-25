@@ -15,6 +15,10 @@ object Main {
     println("()) is balanced: " + balance("())".toList))      // false
     println("(if (a > b) (a/b) v (b > a) (b/a)) is balanced: " +balance("(if (a > b) (a/b) v (b > a) (b/a))".toList))  // true
 
+    println("Function countChange")
+    println(countChange(6, List(1, 2, 3)))
+    println(countChange(8, List(5, 1, 3)))
+    println(countChange(4, List(1, 2, 3)))
 
   }
 
@@ -56,6 +60,10 @@ object Main {
    * 2 and 3: 2+3.
    */
   def countChange(money: Int, coins: List[Int]): Int = {
-
+    if (money == 0) 1
+    else if (money < 0 || coins.isEmpty) 0
+    else {
+      countChange(money - coins.head, coins) + countChange(money, coins.tail)
+    }
   }
 }
