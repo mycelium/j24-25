@@ -15,6 +15,12 @@ object Main {
    * Exercise 1
    */
   def pascal(c: Int, r: Int): Int = {
+    def checkPascal(current: Int, acc: Int): Int = {
+      if (current == c) acc
+      else checkPascal(current + 1, acc * (r - current) / (current + 1))
+    }
+
+    checkPascal(0, 1)
 
   }
 
