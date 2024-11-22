@@ -1,5 +1,5 @@
 package recfun
-import common._
+//import common._
 
 object Main {
   def main(args: Array[String]) {
@@ -9,6 +9,13 @@ object Main {
         print(pascal(col, row) + " ")
       println()
     }
+    println("Function balance")
+    println("() is balanced: " + balance("()".toList))       // true
+    println("(() is balanced: " + balance("(()".toList))      // false
+    println("()) is balanced: " + balance("())".toList))      // false
+    println("(if (a > b) (a/b) v (b > a) (b/a)) is balanced: " +balance("(if (a > b) (a/b) v (b > a) (b/a))".toList))  // true
+
+
   }
 
   /**
@@ -28,7 +35,17 @@ object Main {
    * Exercise 2 Parentheses Balancing
    */
   def balance(chars: List[Char]): Boolean = {
-   
+    def checkBalance(chars: List[Char], openCount: Int): Boolean = {
+      if (chars.isEmpty) openCount == 0 // Баланс должен быть равен 0 в конце
+      else if (openCount < 0) false // Если счетчик стал отрицательным, баланс нарушен
+      else {
+        if (chars.head == '(') checkBalance(chars.tail, openCount + 1)
+        else if (chars.head == ')') checkBalance(chars.tail, openCount - 1)
+        else checkBalance(chars.tail, openCount)
+        // Рекурсивный вызов для оставшихся символов
+      }
+    }
+    checkBalance(chars, 0)
   }
 
   /**
