@@ -1,11 +1,17 @@
 # Java lessons and tasks 2024-2025
 
+Group: 5130201/20102
+Name: A.Bogdan
+
 ## Git task
 
 1. Write your github login into the google table DONE
 2. Create your own branch: <group[20101, 20102]_Surname-Name> DONE
 3. Change README.md DONE
 4. Push your changes into your branch DONE
-5. Resolve conflict
+5. Resolve conflict DONE
+
+Do not touch main branch (yep)
+
 
 
