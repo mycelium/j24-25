@@ -12,6 +12,10 @@ object Main {
     println(s"Is '$parenthesesExpr1' balanced?: ${balance(parenthesesExpr1.toList)}")
     val parenthesesExpr2 = "()((()())())(()("
     println(s"Is '$parenthesesExpr2' balanced?: ${balance(parenthesesExpr2.toList)}")
+
+    println("\n Counting Change")
+    println(s"1) Money = 5, Coins = [1, 2, 3] : ${countChange(5, List(1, 2, 3))} ways")
+    println(s"2) Money = 10, Coins = [1, 2, 5] : ${countChange(10, List(1, 2, 5))} ways")
   }
 
   /**
@@ -47,6 +51,10 @@ object Main {
    * 2 and 3: 2+3.
    */
   def countChange(money: Int, coins: List[Int]): Int = {
-
+    if (money < 0 || coins.isEmpty) {
+      0
+    } else if (money == 0) {
+      1
+    } else countChange(money, coins.tail) + countChange(money - coins.head, coins)
   }
 }
