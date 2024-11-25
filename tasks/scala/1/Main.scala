@@ -18,6 +18,11 @@ object Main {
 
   }
 
+  private def factorial(num: Int): Int = {
+    if (num == 0) 1
+    else num * factorial(num - 1)
+  }
+
   /**
    * Exercise 2 Parentheses Balancing
    */
