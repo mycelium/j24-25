@@ -1,8 +1,5 @@
-package recfun
-import common._
-
 object Main {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     println("Pascal's Triangle")
     for (row <- 0 to 10) {
       for (col <- 0 to row)
@@ -15,7 +12,7 @@ object Main {
    * Exercise 1
    */
   def pascal(c: Int, r: Int): Int = {
-
+    factorial(r) / (factorial(c) * factorial(r - c))
   }
 
   private def factorial(num: Int): Int = {
