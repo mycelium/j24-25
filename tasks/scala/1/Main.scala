@@ -6,6 +6,12 @@ object Main {
         print(pascal(col, row) + " ")
       println()
     }
+
+    println("\nParentheses Balancing")
+    val parenthesesExpr1 = "()((()())())"
+    println(s"Is '$parenthesesExpr1' balanced?: ${balance(parenthesesExpr1.toList)}")
+    val parenthesesExpr2 = "()((()())())(()("
+    println(s"Is '$parenthesesExpr2' balanced?: ${balance(parenthesesExpr2.toList)}")
   }
 
   /**
@@ -24,7 +30,13 @@ object Main {
    * Exercise 2 Parentheses Balancing
    */
   def balance(chars: List[Char]): Boolean = {
-   
+    val result = chars.foldLeft(0) {
+      case (x, ')') if x <= 0 => -1
+      case (x, ')') => x - 1
+      case (x, '(') => x + 1
+      case (x, _) => x
+    }
+    result == 0
   }
 
   /**
