@@ -23,14 +23,15 @@ object Main {
    * Exercise 2 Parentheses Balancing
    */
   def balance(chars: List[Char]): Boolean = {
-    def cyc(chars: List[Char], open: Int): Boolean = {
-      if (chars.isEmpty) open == 0
-      else if (open < 0) false
-      else if (chars.head == '(' || chars.head == '[' || chars.head == '{') cyc(chars.tail, open + 1)
-      else if (chars.head == ')' || chars.head == ']' || chars.head == '}') cyc(chars.tail, open - 1)
-      else cyc(chars.tail, open)
+    def cyc(chars: List[Char], stack: List[Char]): Boolean = {
+      if (chars.isEmpty) stack.isEmpty
+      else if ("({[".contains(chars.head)) cyc(chars.tail, chars.head :: stack)
+      else if (")}]".contains(chars.head)) {
+        stack.nonEmpty && ((stack.head == '(' && chars.head == ')') || (stack.head == '[' && chars.head == ']') || (stack.head == '{' && chars.head == '}'))&& cyc(chars.tail, stack.tail)
+      }
+      else cyc(chars.tail, stack)
     }
-    cyc(chars,0)
+    cyc(chars,List())
   }
 
   /**
