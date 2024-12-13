@@ -24,7 +24,7 @@ object Main {
   def pascal(c: Int, r: Int): Int = fact(r) / (fact(c) * fact(r - c))
 
   private def fact(n: Int): Int = {
-    if (n == 0 || n == 1) 1 else n.*(fact(n - 1))
+    if (n < 2) 1 else n * fact(n - 1)
   }
 
   /**
@@ -48,9 +48,7 @@ object Main {
   def countChange(money: Int, coins: List[Int]): Int = (money, coins) match {
     case (0, _) => 1
     case (x, _) if x < 0 => 0
-    case (money, coins) => {
-      if (coins.isEmpty) 0
-      else countChange(money - coins.head, coins.tail) + countChange(money, coins.tail)
-    }
+    case (_, Nil) => 0
+    case (money, coins) => countChange(money - coins.head, coins.tail) + countChange(money, coins.tail)
   }
 }
