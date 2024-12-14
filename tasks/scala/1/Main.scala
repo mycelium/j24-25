@@ -22,12 +22,8 @@ object Main {
    * Exercise 1
    */
   def pascal(c: Int, r: Int): Int = {
-    factorial(r) / (factorial(c) * factorial(r - c))
-  }
-
-  private def factorial(num: Int): Int = {
-    if (num == 0) 1
-    else num * factorial(num - 1)
+    if (c == 0 || c == r) 1
+    else pascal(c - 1, r - 1) + pascal(c, r - 1)
   }
 
   /**
