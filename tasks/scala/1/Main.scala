@@ -30,13 +30,16 @@ object Main {
    * Exercise 2 Parentheses Balancing
    */
   def balance(chars: List[Char]): Boolean = {
-    val result = chars.foldLeft(0) {
-      case (x, ')') if x <= 0 => -1
-      case (x, ')') => x - 1
-      case (x, '(') => x + 1
-      case (x, _) => x
+    def loop(chars: List[Char], open: Int): Boolean = {
+      if (open < 0) false // Закрывающая скобка без соответствующей открывающей
+      else chars match {
+        case Nil => open == 0
+        case '(' :: tail => loop(tail, open + 1)
+        case ')' :: tail => loop(tail, open - 1)
+        case _ :: tail => loop(tail, open)
+      }
     }
-    result == 0
+    loop(chars, 0)
   }
 
   /**
