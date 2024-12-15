@@ -10,7 +10,7 @@ object Main {
   }
 }
 
-case class Vector3D(x:Int, y:Int, z:Int){
+case class Vector3D(x:Double, y:Double, z:Double){
   def addition(second: Vector3D): Vector3D = Vector3D(this.x + second.x, this.y + second.y, this.z + second.z)
 
   def substraction(second: Vector3D): Vector3D = Vector3D(this.x - second.x, this.y - second.y, this.z - second.z)
@@ -19,6 +19,6 @@ case class Vector3D(x:Int, y:Int, z:Int){
 
   def multiplicationScalar(second: Vector3D): Vector3D = Vector3D(this.x * second.x, this.y * second.y, this.z * second.z)
 
-  def transpose(): List[Int] = List (x,y,z)
+  def transpose(): List[Double] = List (x,y,z)
 
 }
