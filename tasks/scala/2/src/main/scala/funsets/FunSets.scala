@@ -7,75 +7,76 @@ import common._
  */
 object FunSets {
   /**
-   * Мы представляем множество как его характеристическую функцию, т.е.
-   * предикат `contains`.
+   * We represent a set by its characteristic function, i.e.
+   * its `contains` predicate.
    */
   type Set = Int => Boolean
 
   /**
-   * Проверяет, содержит ли множество `s` элемент `elem`.
+   * Indicates whether a set contains a given element.
    */
   def contains(s: Set, elem: Int): Boolean = s(elem)
 
   /**
-   * Возвращает множество, содержащее только один заданный элемент.
+   * Returns the set of the one given element.
    */
-  def singletonSet(elem: Int): Set = (x: Int) => x == elem
+    def singletonSet(elem: Int): Set = ???
+  
 
   /**
-   * Возвращает объединение двух множеств `s` и `t`,
-   * т.е. множество всех элементов, которые находятся либо в `s`, либо в `t`.
+   * Returns the union of the two given sets,
+   * the sets of all elements that are in either `s` or `t`.
    */
-  def union(s: Set, t: Set): Set = (x: Int) => s(x) || t(x)
+    def union(s: Set, t: Set): Set = ???
+  
+  /**
+   * Returns the intersection of the two given sets,
+   * the set of all elements that are both in `s` and `t`.
+   */
+    def intersect(s: Set, t: Set): Set = ???
+  
+  /**
+   * Returns the difference of the two given sets,
+   * the set of all elements of `s` that are not in `t`.
+   */
+    def diff(s: Set, t: Set): Set = ???
+  
+  /**
+   * Returns the subset of `s` for which `p` holds.
+   */
+    def filter(s: Set, p: Int => Boolean): Set = ???
+  
 
   /**
-   * Возвращает пересечение двух множеств `s` и `t`,
-   * т.е. множество всех элементов, которые находятся одновременно в `s` и в `t`.
-   */
-  def intersect(s: Set, t: Set): Set = (x: Int) => s(x) && t(x)
-
-  /**
-   * Возвращает разность двух множеств `s` и `t`,
-   * т.е. множество всех элементов `s`, которых нет в `t`.
-   */
-  def diff(s: Set, t: Set): Set = (x: Int) => s(x) && !t(x)
-
-  /**
-   * Возвращает подмножество `s`, для которого предикат `p` выполняется.
-   */
-  def filter(s: Set, p: Int => Boolean): Set = (x: Int) => s(x) && p(x)
-
-  /**
-   * Границы для функций `forall` и `exists` - +/- 1000.
+   * The bounds for `forall` and `exists` are +/- 1000.
    */
   val bound = 1000
 
   /**
-   * Проверяет, выполняется ли предикат `p` для всех элементов множества `s` в пределах границ.
+   * Returns whether all bounded integers within `s` satisfy `p`.
    */
-  def forall(s: Set, p: Int => Boolean): Boolean = {
+    def forall(s: Set, p: Int => Boolean): Boolean = {
     def iter(a: Int): Boolean = {
-      if (a > bound) true
-      else if (s(a) && !p(a)) false
-      else iter(a + 1)
+      if (???) ???
+      else if (???) ???
+      else iter(???)
     }
-    iter(-bound)
+    iter(???)
   }
-
+  
   /**
-   * Проверяет, существует ли элемент в множестве `s`, для которого предикат `p` выполняется.
+   * Returns whether there exists a bounded integer within `s`
+   * that satisfies `p`.
    */
-  def exists(s: Set, p: Int => Boolean): Boolean = {
-    !forall(s, (x: Int) => !p(x))
-  }
-
+    def exists(s: Set, p: Int => Boolean): Boolean = ???
+  
   /**
-   * Возвращает множество, полученное применением функции `f` к каждому элементу множества `s`.
+   * Returns a set transformed by applying `f` to each element of `s`.
    */
-  def map(s: Set, f: Int => Int): Set = (y: Int) => exists(s, (x: Int) => f(x) == y)
-
+    def map(s: Set, f: Int => Int): Set = ???
+  
   /**
-   * Отображает содержимое множества в виде строки.
+   * Displays the contents of a set
    */
   def toString(s: Set): String = {
     val xs = for (i <- -bound to bound if contains(s, i)) yield i
@@ -83,7 +84,7 @@ object FunSets {
   }
 
   /**
-   * Выводит содержимое множества на консоль.
+   * Prints the contents of a set on the console.
    */
   def printSet(s: Set) {
     println(toString(s))
