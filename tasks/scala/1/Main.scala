@@ -22,16 +22,18 @@ object Main {
   /**
    * Exercise 2 Parentheses Balancing
    */
-  def balance(chars: List[Char]): Boolean = {
-    def loop(chars: List[Char], open: Int): Boolean = {
-      if (chars.isEmpty) open == 0
-      else if (open < 0) false
-      else if (chars.head == '{'  chars.head == '['  chars.head == '(') loop(chars.tail, open + 1)
-      else if (chars.head == '}'  chars.head == ']'  chars.head == ')') loop(chars.tail, open - 1)
-      else loop(chars.tail, open)
+def balance(chars: List[Char]): Boolean = {
+  def loop(chars: List[Char], stack: List[Char]): Boolean = {
+    if (chars.isEmpty) stack.isEmpty
+    else if ("({[".contains(chars.head)) loop(chars.tail, chars.head :: stack)
+    else if (")}]".contains(chars.head)) {
+      stack.nonEmpty && ((stack.head == '(' && chars.head == ')') || (stack.head == '[' && chars.head == ']') || (stack.head == '{' && chars.head == '}')) && loop(chars.tail, stack.tail)
     }
-    loop(chars,0)
+    else loop(chars.tail, stack)
   }
+  loop(chars, List())
+}
+
 
   /**
    * Exercise 3 Counting Change
