@@ -9,11 +9,17 @@ object Main {
       println()
     }
 
+    // Second function
     println(balance(("()()((()))()()((()))").toList))
     println(balance(("()()((()))()()((()))(").toList))
     println(balance(("()()((()))()()((())))").toList))
     println(balance(("(x + 1) * 2 = 2 * x + 2").toList))
     println(balance(("(x + 1) * 2 = (2 * x + 2").toList))
+
+    // third function
+    println(countChange(5, List(2, 3)))
+    println(countChange(10, List(1, 2, 5)))
+    println(countChange(10, List(20)))
   }
 
   /**
@@ -47,7 +53,9 @@ object Main {
    * there is 1 way to give change for 5 if you have coins with denomiation
    * 2 and 3: 2+3.
    */
-  //  def countChange(money: Int, coins: List[Int]): Int = {
-  //
-  //  }
+  def countChange(money: Int, coins: List[Int]): Int = {
+    if (money < 0 || coins.isEmpty) 0
+    else if (money == 0) 1
+    else countChange(money, coins.tail) + countChange(money - coins.head, coins)
+  }
 }
