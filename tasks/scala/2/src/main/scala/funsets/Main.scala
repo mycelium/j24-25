@@ -2,9 +2,9 @@ package funsets
 
 object Main extends App {
   import FunSets._
+  
   val set1: Set = x => x > 0 && x < 5
   val set2: Set = x => x > 5 && x < 10
-
 
   println("1 in " + FunSets.toString(set1) + ": " + contains(set1, 1))
   println("10 in " + FunSets.toString(set1) + ": " + contains(set1, 10))
@@ -23,6 +23,4 @@ object Main extends App {
   
   println("forall 'x => x % 2 == 0' in " + FunSets.toString(setUnion) + ": " + forall(setUnion, x => x % 2 == 0))
   println("exists 'x => x % 2 == 0' in" + FunSets.toString(setUnion) + ": " + exists(setUnion, x => x % 2 == 0))
-
-
 }
