@@ -9,6 +9,14 @@ object Main {
         print(pascal(col, row) + " ")
       println()
     }
+
+    val str = "println(countChange(15, List(1, 5, 10)))"
+    println(str)
+    if (balance(str.toList)) println("is balanced")
+    else                     println("isn't balanced")
+    
+    print("number of ways to change 15 given 1, 5 and 10 = ")
+    println(countChange(15, List(1, 5, 10)))
   }
 
   /**
