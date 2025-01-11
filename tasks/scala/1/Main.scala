@@ -24,7 +24,14 @@ object Main {
    * Exercise 2 Parentheses Balancing
    */
   def balance(chars: List[Char]): Boolean = {
-   
+    @annotation.tailrec
+    def rec(chars: List[Char], depth: Int): Boolean = chars match {
+      case Nil                      => depth == 0
+      case '(' :: tail              => rec(tail, depth + 1)
+      case ')' :: tail if depth > 0 => rec(tail, depth - 1)
+      case ')' :: _                 => false
+      case _ :: tail                => rec(tail, depth)
+    }; rec(chars, 0)
   }
 
   /**
