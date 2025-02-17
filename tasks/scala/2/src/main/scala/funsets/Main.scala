@@ -38,4 +38,10 @@ object Main extends App {
   println("On oneTwoSet - " + forall(oneTwoSet, testPredicate))
   println("On twoThreeSet - " + forall(twoThreeSet, testPredicate))
   println("On bigSet - " + forall(bigSet, testPredicate))
+
+  println("\nTesting exists function:")
+  println("Exists element > 2 in oneTwoSet: " + exists(oneTwoSet, x => x > 2))
+  println("Exists element > 2 in twoThreeSet: " + exists(twoThreeSet, x => x > 2))
+  println("Exists element = 3 in bigSet: " + exists(bigSet, x => x == 3))
+  println("Exists element = 4 in bigSet: " + exists(bigSet, x => x == 4))
 }
