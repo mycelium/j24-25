@@ -4,3 +4,8 @@ bin/
 .classpath
 .settings
 out/
+
+.bsp
+.metals
+.scala-build
+.vscode
