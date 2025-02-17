@@ -1,3 +1,12 @@
+/*
+ * В задании ничего не сказано про версию Scala, я использовал последнюю
+ * scala --version
+ * Scala code runner version: 1.5.4
+ * Scala version (default): 3.6.3
+ * 
+ * Запускал с помощью команды: scala run Main.scala 
+ */
+
 package recfun
 
 object Main {
