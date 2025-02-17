@@ -25,6 +25,21 @@ object Main {
       val result = balance(input.toList)
       println(s"Input: '$input' => $result (Expected: $expected) - ${if (result == expected) "OK" else "BROKEN"}")
     }
+
+    // Тесты для функции countChange
+    val changeTests = List(
+      (4, List(1, 2), 3), // 1111, 112, 22
+      (5, List(1, 2, 3), 5), // 11111, 1112, 122, 113, 23
+      (7, List(2, 3), 1), // 223
+      (0, List(1, 2, 3), 1),
+      (5, List(), 0),
+    )
+
+    println("\nПроверка функции countChange:")
+    changeTests.foreach { case (money, coins, expected) =>
+      val result = countChange(money, coins)
+      println(s"money = $money, coins = $coins => $result (Expected: $expected) - ${if (result == expected) "OK" else "BROKEN"}")
+    }
   }
 
   /**
