@@ -20,6 +20,7 @@ object Main {
       ("(hello(world))", true)
     )
 
+    println("\nПроверка функции balanceTests:")
     balanceTests.foreach { case (input, expected) =>
       val result = balance(input.toList)
       println(s"Input: '$input' => $result (Expected: $expected) - ${if (result == expected) "OK" else "BROKEN"}")
