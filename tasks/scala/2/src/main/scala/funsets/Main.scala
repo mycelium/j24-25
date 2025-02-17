@@ -44,4 +44,9 @@ object Main extends App {
   println("Exists element > 2 in twoThreeSet: " + exists(twoThreeSet, x => x > 2))
   println("Exists element = 3 in bigSet: " + exists(bigSet, x => x == 3))
   println("Exists element = 4 in bigSet: " + exists(bigSet, x => x == 4))
+
+  println("\nTesting map function:")
+  val squaredSet = map(bigSet, x => x * x)
+  println("Mapped bigSet with x => x^2:")
+  printSet(squaredSet)
 }
