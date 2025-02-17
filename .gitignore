@@ -4,7 +4,3 @@ bin/
 .classpath
 .settings
 out/
-.idea/
-target/
-.log
-.jar
