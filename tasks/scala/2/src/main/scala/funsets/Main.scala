@@ -24,4 +24,12 @@ object Main extends App {
   println("1 in diffSet - " + contains(diffSet, 1))
   println("2 in diffSet - " + contains(diffSet, 2))
   println("3 in diffSet - " + contains(diffSet, 3))
+
+  println("Create bigSet = oneTwoSet U twoThreeSet")
+  val bigSet = union(oneTwoSet, twoThreeSet)
+  println("Filter bigSet with predicate { x >= 2 }")
+  val filteredSet = filter(bigSet, x => x >= 2)
+  println("1 in filteredSet - " + contains(filteredSet, 1))
+  println("2 in filteredSet - " + contains(filteredSet, 2))
+  println("3 in filteredSet - " + contains(filteredSet, 3))
 }
