@@ -16,6 +16,7 @@ public class Main {
 	public static void main(String[] args) {
 		double[][] firstMatrix = fillMatrix(new double[2000][1500]);
 		double[][] secondMatrix = fillMatrix(new double[1500][1000]);
+		
 
 		int count = 10;
 		Long timeBefore = System.currentTimeMillis();
