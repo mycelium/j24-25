@@ -22,7 +22,20 @@ object Main {
    * Exercise 2 Parentheses Balancing
    */
   def balance(chars: List[Char]): Boolean = {
-   ???
+    def loop(chars: List[Char], openCount: Int): Boolean = {
+      if (chars.isEmpty) openCount == 0
+      else {
+        val newCount = chars.head match {
+          case '(' => openCount + 1
+          case ')' => openCount - 1
+          case _   => openCount
+        }
+        if (newCount < 0) false
+        else loop(chars.tail, newCount)
+      }
+    }
+
+    loop(chars, 0)
   }
 
   /**
