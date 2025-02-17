@@ -32,4 +32,10 @@ object Main extends App {
   println("1 in filteredSet - " + contains(filteredSet, 1))
   println("2 in filteredSet - " + contains(filteredSet, 2))
   println("3 in filteredSet - " + contains(filteredSet, 3))
+
+  println("Test predicate { x < 3 } for all elements in different sets")
+  val testPredicate: (Int => Boolean) = x => x < 3
+  println("On oneTwoSet - " + forall(oneTwoSet, testPredicate))
+  println("On twoThreeSet - " + forall(twoThreeSet, testPredicate))
+  println("On bigSet - " + forall(bigSet, testPredicate))
 }
