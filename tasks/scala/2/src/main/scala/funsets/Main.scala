@@ -18,4 +18,10 @@ object Main extends App {
   println("1 in oneTwoSet intersect twoThreeSet - " + contains(intersectSet, 1))
   println("2 in oneTwoSet intersect twoThreeSet - " + contains(intersectSet, 2))
   println("3 in oneTwoSet intersect twoThreeSet - " + contains(intersectSet, 3))
+
+  println("Create oneTwoSet and twoThreeSet difference")
+  val diffSet = diff(oneTwoSet, twoThreeSet)
+  println("1 in diffSet - " + contains(diffSet, 1))
+  println("2 in diffSet - " + contains(diffSet, 2))
+  println("3 in diffSet - " + contains(diffSet, 3))
 }
