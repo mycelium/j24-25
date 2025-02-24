@@ -9,12 +9,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.StructuredTaskScope;
+import java.util.concurrent.StructuredTaskScope.Subtask;
 
 public class Main {
 	public static void main(String[] args) {
 		Path customersFile = Paths.get("input/customers-2000000.csv");
 
-//		String customerName = "Savannah Cherry";
+		//String customerName = "Savannah Cherry";
 		String customerName = "Васян";
 		long startTime = System.currentTimeMillis();
 		var foundCustomerId = getCustomerId(customersFile, customerName);
@@ -88,14 +93,12 @@ public class Main {
 
 	public static Optional<String> getCustomerIdByNameWithCF(String name) {
 
-		try {
-//			var jobs = IntStream.range(1, 11).mapToObj(fileNum -> String.valueOf(fileNum))
-//					.map(fileId -> CompletableFuture.supplyAsync(() -> {
-//						Path inputPath = Paths.get("input", fileId + ".csv");
-//						return getCustomerId(inputPath, name);
-//					})).toList();
+		try (ExecutorService exservice = Executors.newVirtualThreadPerTaskExecutor()){
+			
+
+			
 			var jobs = Files.list(Paths.get("input/chunks"))
-					.map(chunk -> CompletableFuture.supplyAsync(() -> getCustomerId(chunk, name))).toList();
+					.map(chunk -> CompletableFuture.supplyAsync(() -> getCustomerId(chunk, name), exservice)).toList();
 
 			CompletableFuture<Optional<String>>[] jj = new CompletableFuture[jobs.size()];
 			jj = jobs.toArray(jj);
@@ -114,5 +117,34 @@ public class Main {
 			System.err.println(e.getMessage());
 		}
 		return Optional.empty();
+	}
+
+	public static Optional<String> getCustomerIdByNameWithSC(String name) {
+
+		try (var scope = new StructuredTaskScope.ShutdownOnSuccess<String>()) {
+			var jobs = Files.list(Paths.get("input/chunks")).map(chunk -> {
+				Subtask<String> subtask = scope.fork(() -> {
+					Optional<String> customerId = getCustomerId(chunk, name);
+					return customerId.get();
+				});
+				return subtask;
+			}).toList();
+
+			scope.join();
+			return Optional.ofNullable(scope.result());
+
+		} catch (IOException e) {
+			System.err.println(e.getMessage());
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (Exception e) {
+
+		} finally {
+			return Optional.empty();
+		}
 	}
 }
