@@ -8,16 +8,15 @@ import java.util.stream.IntStream;
 
 public class JSONParser {
 
-    public static <T> Object readJsonToObject(String json, T object){
-        return "";
+    public static <T> T readJsonToObject(String json, T object){
+        Map<String, Object> map = readJsonToMap(json);
+
+        return fillObjectWithMap(map, object);
     }
 
-    public static <T> T readJsonToEntity(Map<String, Object> map, Class<T> clazz) {
-        try {
-            // Создаем экземпляр целевого класса
-            T object = clazz.getDeclaredConstructor().newInstance();
-
-            // Проходим по всем полям класса
+    private static <T> T fillObjectWithMap(Map<String, Object> map, T object){
+        try{
+            Class<?> clazz = object.getClass();
             for (Field field : clazz.getDeclaredFields()) {
                 String fieldName = field.getName();
                 if (map.containsKey(fieldName)) {
@@ -26,7 +25,7 @@ public class JSONParser {
 
                     // Если значение является Map, рекурсивно преобразуем его в объект
                     if (value instanceof Map) {
-                        value = readJsonToEntity((Map<String, Object>) value, fieldType);
+                        value = fillObjectWithMap((Map<String, Object>) value, fieldType);
                     }
 
                     // Если значение является List, обрабатываем его элементы
@@ -35,7 +34,7 @@ public class JSONParser {
                             Class<?> listType = (Class<?>) ((java.lang.reflect.ParameterizedType) field.getGenericType())
                                     .getActualTypeArguments()[0];
                             List<Object> typedList = (List<Object>) list;
-                            typedList.replaceAll(o -> readJsonToEntity((Map<String, Object>) o, listType));
+                            typedList.replaceAll(o -> fillObjectWithMap((Map<String, Object>) o, listType));
                         }
                     }
 
@@ -47,6 +46,17 @@ public class JSONParser {
             }
 
             return object;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to convert map to object", e);
+        }
+    }
+
+    public static <T> T readJsonToEntity(String json, Class<T> clazz) {
+        try {
+            // Создаем экземпляр целевого класса
+            T object = clazz.getDeclaredConstructor().newInstance();
+
+            return readJsonToObject(json, object);
         } catch (Exception e) {
             throw new RuntimeException("Failed to convert map to object", e);
         }
