@@ -1,5 +1,7 @@
-public class JSONValue {
-    public enum JSONType {
+package main.java.ru.spbstu.telematics.json;
+
+public class JsonValue {
+    public enum JsonType {
         STRING,
         NUMBER,
         BOOLEAN,
@@ -8,15 +10,15 @@ public class JSONValue {
         OBJECT
     }
 
-    private JSONType type;
+    private JsonType type;
     private String value;
 
-    public JSONValue(JSONType type, String value) {
+    public JsonValue(JsonType type, String value) {
         this.type = type;
         this.value = value;
     }
 
-    public JSONType getType() {
+    public JsonType getType() {
         return type;
     }
 
