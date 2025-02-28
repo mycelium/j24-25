@@ -1,4 +1,4 @@
-package main.java.ru.spbstu.telematics.json;
+package ru.spbstu.telematics.json.jsonreader;
 
 public class JsonValue {
     public enum JsonType {
