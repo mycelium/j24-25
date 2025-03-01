@@ -59,7 +59,7 @@ public class JsonReader {
             return parseArray(value);
         } else if (value.equals("true") || value.equals("false")) {
             // Булево значение
-            return Boolean.parseBoolean(value);
+            return Boolean.valueOf(value);
         } else if (value.equals("null")) {
             // null
             return null;
@@ -68,7 +68,11 @@ public class JsonReader {
             return value.substring(1, value.length() - 1);
         } else if (value.matches("-?\\d+(\\.\\d+)?")) {
             // Число (целое или с плавающей точкой)
-            return value.contains(".") ? Double.parseDouble(value) : Long.parseLong(value);
+            if (value.contains("."))
+            {
+                return Double.valueOf(value);
+            }
+            return Integer.valueOf(value);
         } else {
             throw new WrongJsonStringFormatException("Unknown value type: " + value);
         }
