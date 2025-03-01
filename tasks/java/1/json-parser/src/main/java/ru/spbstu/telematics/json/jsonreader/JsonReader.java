@@ -2,6 +2,7 @@ package ru.spbstu.telematics.json.jsonreader;
 
 import ru.spbstu.telematics.json.exceptions.WrongJsonStringFormatException;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -125,7 +126,20 @@ public class JsonReader {
 
         try {
             // Создаем экземпляр целевого класса
-            T object = filledClass.getDeclaredConstructor().newInstance();
+            T object;
+            Constructor<T> ctr;
+            try {
+                ctr = filledClass.getDeclaredConstructor();
+            } catch (NoSuchMethodException e) {
+                throw new RuntimeException("The constructor of "
+                        + filledClass + " is not available");
+            }
+            try {
+                object = ctr.newInstance();
+            } catch (InvocationTargetException e) {
+                throw new RuntimeException("The object of "
+                        + filledClass + "cannot be instantiated");
+            }
 
             // Заполняем поля объекта
             for (Map.Entry<String, Object> entry : jsonMap.entrySet()) {
@@ -156,14 +170,12 @@ public class JsonReader {
 
             return object;
         } catch (InstantiationException e) {
-            throw new InstantiationException("The object of class" + filledClass + "cannot be instantiated");
+            throw new InstantiationException("The object of " + filledClass + " cannot be instantiated");
         } catch (IllegalAccessException e) {
             throw new IllegalAccessException(
                     "Cannot get access to the definition of the class " + filledClass
-                            + ", its field, method or constructor"
+                            + ", its field, method or constructor; caused by " + e.getMessage()
             );
-        } catch (InvocationTargetException | NoSuchMethodException e) {
-            throw new RuntimeException("The class " + filledClass + "cannot be instantiated");
         }
     }
 
