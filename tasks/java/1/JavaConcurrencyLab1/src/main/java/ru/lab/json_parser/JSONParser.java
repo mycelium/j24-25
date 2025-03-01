@@ -1,5 +1,6 @@
 package ru.lab.json_parser;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -8,10 +9,21 @@ import java.util.stream.IntStream;
 
 public class JSONParser {
 
-    public static <T> T readJsonToObject(String json, T object){
+    public static <T> T readJsonToObject(String json, T object) {
         Map<String, Object> map = readJsonToMap(json);
+        Class<?> clazz = object.getClass();
+        Object newObject = fillClazzWithMap(map, clazz);
+        Field[] fields = newObject.getClass().getDeclaredFields();
 
-        return fillObjectWithMap(map, object);
+        for(Field field: fields){
+            try{
+                field.setAccessible(true);
+                field.set(object, field.get(newObject));
+            }catch (IllegalAccessException exc){
+                exc.printStackTrace();
+            }
+        }
+        return object;
     }
 
     private static <T> T fillObjectWithMap(Map<String, Object> map, T object){
@@ -51,14 +63,53 @@ public class JSONParser {
         }
     }
 
-    public static <T> T readJsonToEntity(String json, Class<T> clazz) {
-        try {
-            // Создаем экземпляр целевого класса
-            T object = clazz.getDeclaredConstructor().newInstance();
 
-            return readJsonToObject(json, object);
+    private static <T> T fillClazzWithMap(Map<String, Object> map, Class<T> clazz){
+        try{
+            List<Object> arguments = new ArrayList<>();
+            Constructor<?>[] constructors = clazz.getConstructors();
+            for (Field field : clazz.getDeclaredFields()) {
+                String fieldName = field.getName();
+                if (map.containsKey(fieldName)) {
+                    Class<?> fieldType = field.getType();
+                    Object value = map.get(fieldName);
+
+                    // Если значение является Map, рекурсивно преобразуем его в объект
+                    if (value instanceof Map) {
+                        value = fillClazzWithMap((Map<String, Object>) value, fieldType);
+                    }
+
+                    // Если значение является List, обрабатываем его элементы
+                    if (value instanceof List<?> list) {
+                        if (!list.isEmpty() && list.get(0) instanceof Map) {
+                            Class<?> listType = (Class<?>) ((java.lang.reflect.ParameterizedType) field.getGenericType())
+                                    .getActualTypeArguments()[0];
+                            List<Object> typedList = (List<Object>) list;
+                            typedList.replaceAll(o -> fillClazzWithMap((Map<String, Object>) o, listType));
+                        }
+                    }
+
+                    arguments.add(value);
+                }
+            }
+            for (Constructor<?> constructor: constructors){
+                try{
+                    return (T) constructor.newInstance(arguments.toArray());
+                } catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
         } catch (Exception e) {
             throw new RuntimeException("Failed to convert map to object", e);
+        }
+        throw new RuntimeException("Failed to convert map to object");
+    }
+
+    public static <T> T readJsonToEntity(String json, Class<T> clazz) {
+        try {
+            return fillClazzWithMap(readJsonToMap(json), clazz);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to convert json to Entity", e);
         }
     }
 
@@ -201,7 +252,7 @@ public class JSONParser {
             jsonBuilder.append("\"")
                     .append(escapeJson(entry.getKey()))
                     .append("\":")
-                    .append(convertEntityToObject(entry.getValue()));
+                    .append(convertEntityToJSON(entry.getValue()));
             if (iterator.hasNext()){
                 jsonBuilder.append(",");
             }
@@ -211,7 +262,7 @@ public class JSONParser {
         return jsonBuilder.toString();
     }
 
-    public static <T> String convertEntityToObject(T object) {
+    public static <T> String convertEntityToJSON(T object) {
         if(object == null){
             return "null";
         } else if (object instanceof String) {
@@ -284,7 +335,7 @@ public class JSONParser {
 
         var iterator = iterable.iterator();
         while(iterator.hasNext()){
-            arrayBuilder.append(convertEntityToObject(iterator.next()));
+            arrayBuilder.append(convertEntityToJSON(iterator.next()));
             if (iterator.hasNext()) {
                 arrayBuilder.append(",");
             }
