@@ -19,6 +19,40 @@ class JsonReaderTest {
     private static String correctEmptyJson = "{}";
     private static String incorrectFormattedJson = "\"name\": \"John Doe\"";
     private static String nullJson = null;
+    private static String jsonToObject = "{\"name\": \"John Doe\", \"age\": 30," +
+            " \"address\": {\"city\": \"Saint-Petersburg\", \"street\": \"Lenina\"}}";
+
+    public static class Person {
+        private String name;
+        private int age;
+        private Address address;
+
+        public String getName() {
+            return name;
+        }
+
+        public int getAge() {
+            return age;
+        }
+
+        public Address getAddress() {
+            return address;
+        }
+    }
+
+    static public class Address {
+        private String city;
+        private String street;
+
+        public String getCity() {
+            return city;
+        }
+
+        public String getStreet() {
+            return street;
+        }
+    }
+
 
     @Test
     void testMapOnCorrectJsonAllTypes() throws WrongJsonStringFormatException {
@@ -56,5 +90,23 @@ class JsonReaderTest {
         });
 
         assertEquals("JSON is null", exception.getMessage());
+    }
+
+    @Test
+    void testJsonToCorrectObject() throws WrongJsonStringFormatException {
+        Person person;
+        try {
+            person = JsonReader.fromJsonToObject(jsonToObject, Person.class);
+            assertEquals("John Doe", person.getName());
+            assertEquals(30, person.getAge());
+            assertEquals("Saint-Petersburg", person.getAddress().getCity());
+            assertEquals("Lenina", person.getAddress().getStreet());
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
     }
 }
