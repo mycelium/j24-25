@@ -2,6 +2,8 @@ package ru.spbstu.telematics.json.jsonreader;
 
 import ru.spbstu.telematics.json.exceptions.WrongJsonStringFormatException;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -110,5 +112,76 @@ public class JsonReader {
             result.put(key, parseValue(value));
         }
         return result;
+    }
+
+    static public <T> T fromJsonToObject(String json, Class<T> filledClass) throws
+            WrongJsonStringFormatException,
+            NoSuchFieldException,
+            InstantiationException,
+            IllegalAccessException
+    {
+        // Преобразуем JSON в Map
+        Map<String, Object> jsonMap = fromJsonToMap(json);
+
+        try {
+            // Создаем экземпляр целевого класса
+            T object = filledClass.getDeclaredConstructor().newInstance();
+
+            // Заполняем поля объекта
+            for (Map.Entry<String, Object> entry : jsonMap.entrySet()) {
+                String fieldName = entry.getKey();
+                Object value = entry.getValue();
+
+                // Находим поле в классе
+                Field field;
+                try {
+                    field = filledClass.getDeclaredField(fieldName);
+                } catch (NoSuchFieldException e) {
+                    throw new NoSuchFieldException("The class " + filledClass + " does not have field " + fieldName);
+                }
+
+                // Делаем поле доступным (если оно private)
+                field.setAccessible(true);
+
+                // Устанавливаем значение поля
+                if (value instanceof Map) {
+                    // Если значение — это вложенный объект, рекурсивно создаем его
+                    value = fromJsonToObject(mapToJson((Map<String, Object>) value), field.getType());
+                } else if (value instanceof List) {
+                    // TODO: дописать для массива
+                }
+
+                field.set(object, value);
+            }
+
+            return object;
+        } catch (InstantiationException e) {
+            throw new InstantiationException("The object of class" + filledClass + "cannot be instantiated");
+        } catch (IllegalAccessException e) {
+            throw new IllegalAccessException(
+                    "Cannot get access to the definition of the class " + filledClass
+                            + ", its field, method or constructor"
+            );
+        } catch (InvocationTargetException | NoSuchMethodException e) {
+            throw new RuntimeException("The class " + filledClass + "cannot be instantiated");
+        }
+    }
+
+    private static String mapToJson(Map<String, Object> map) {
+        StringBuilder json = new StringBuilder("{");
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            if (json.length() > 1) {
+                json.append(",");
+            }
+            json.append("\"").append(entry.getKey()).append("\":");
+            Object value = entry.getValue();
+            if (value instanceof String) {
+                json.append("\"").append(value).append("\"");
+            } else {
+                json.append(value);
+            }
+        }
+        json.append("}");
+        return json.toString();
     }
 }
