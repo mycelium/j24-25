@@ -21,6 +21,7 @@ class JsonReaderTest {
     private static String nullJson = null;
     private static String jsonToObject = "{\"name\": \"John Doe\", \"age\": 30," +
             " \"address\": {\"city\": \"Saint-Petersburg\", \"street\": \"Lenina\"}}";
+    private static String jsonWithArray = "{\"animals\": [\"dogs\", \"cats\"]}";
 
     public static class Person {
         private String name;
@@ -53,6 +54,13 @@ class JsonReaderTest {
         }
     }
 
+    public static class AnimalsCollection {
+        private List<String> animals;
+
+        public List<String> getAnimals() {
+            return animals;
+        }
+    }
 
     @Test
     void testMapOnCorrectJsonAllTypes() throws WrongJsonStringFormatException {
@@ -101,6 +109,23 @@ class JsonReaderTest {
             assertEquals(30, person.getAge());
             assertEquals("Saint-Petersburg", person.getAddress().getCity());
             assertEquals("Lenina", person.getAddress().getStreet());
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    void testJsonWithArrayToObject() throws WrongJsonStringFormatException {
+        AnimalsCollection animalsCollection;
+
+        try {
+            animalsCollection = JsonReader.fromJsonToObject(jsonWithArray, AnimalsCollection.class);
+            assertEquals("dogs", animalsCollection.getAnimals().get(0));
+            assertEquals("cats", animalsCollection.getAnimals().get(1));
         } catch (NoSuchFieldException e) {
             e.printStackTrace();
         } catch (InstantiationException e) {

@@ -2,6 +2,7 @@ package ru.spbstu.telematics.json.jsonreader;
 
 import ru.spbstu.telematics.json.exceptions.WrongJsonStringFormatException;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -161,8 +162,6 @@ public class JsonReader {
                 if (value instanceof Map) {
                     // Если значение — это вложенный объект, рекурсивно создаем его
                     value = fromJsonToObject(mapToJson((Map<String, Object>) value), field.getType());
-                } else if (value instanceof List) {
-                    // TODO: дописать для массива
                 }
 
                 field.set(object, value);
