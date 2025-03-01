@@ -25,7 +25,7 @@ public class JsonReader {
         if (json.chars().filter(ch -> ch == '{').count() != json.chars().filter(ch -> ch == '}').count()) {
             throw new WrongJsonStringFormatException("JSON contains different number of brackets");
         }
-        return result;
+        return readJson(json);
     }
 
     private static List<String> splitJson(String json) throws WrongJsonStringFormatException {
