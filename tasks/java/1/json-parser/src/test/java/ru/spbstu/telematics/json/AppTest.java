@@ -1,7 +1,5 @@
 package ru.spbstu.telematics.json;
 
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.spbstu.telematics.json.exceptions.WrongJsonStringFormatException;
 import ru.spbstu.telematics.json.jsonreader.JsonReader;
@@ -130,11 +128,7 @@ class JsonReaderTest {
             assertEquals(30, person.getAge());
             assertEquals("Saint-Petersburg", person.getAddress().getCity());
             assertEquals("Lenina", person.getAddress().getStreet());
-        } catch (NoSuchFieldException e) {
-            e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
+        } catch (NoSuchFieldException | IllegalAccessException | InstantiationException e) {
             e.printStackTrace();
         }
     }
@@ -147,11 +141,7 @@ class JsonReaderTest {
             animalsCollection = JsonReader.fromJsonNewObject(jsonWithArray, AnimalsCollection.class);
             assertEquals("dogs", animalsCollection.getAnimals().get(0));
             assertEquals("cats", animalsCollection.getAnimals().get(1));
-        } catch (NoSuchFieldException e) {
-            e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
+        } catch (NoSuchFieldException | InstantiationException | IllegalAccessException e) {
             e.printStackTrace();
         }
     }
@@ -173,15 +163,8 @@ class JsonReaderTest {
             assertEquals(30, person.getAge());
             assertEquals("Saint-Petersburg", person.getAddress().getCity());
             assertEquals("Lenina", person.getAddress().getStreet());
-        } catch (NoSuchFieldException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } catch (InstantiationException e) {
+        } catch (NoSuchFieldException | IllegalAccessException | NoSuchMethodException | InvocationTargetException |
+                 InstantiationException e) {
             e.printStackTrace();
         }
     }
