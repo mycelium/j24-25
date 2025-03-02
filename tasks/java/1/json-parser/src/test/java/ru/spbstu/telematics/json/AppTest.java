@@ -217,4 +217,34 @@ class JsonReaderTest {
         // Проверяем, что метод выбрасывает WrongJsonStringFormatException
         assertThrows(WrongJsonStringFormatException.class, () -> JsonReader.fromJsonToMap(jsonFile));
     }
+
+    @Test
+    void testFromJsonToNewObjectValidJsonFile() throws WrongJsonStringFormatException, IOException {
+        // Создаем временный файл с корректным JSON
+        File jsonFile = tempDir.resolve("test.json").toFile();
+        try (FileWriter writer = new FileWriter(jsonFile)) {
+            writer.write("{\"name\": \"John\", \"age\": 30}");
+        }
+
+        Map<String, Object> result = JsonReader.fromJsonToMap(jsonFile);
+
+        assertNotNull(result);
+        assertEquals("John", result.get("name"));
+        assertEquals(30, result.get("age"));
+    }
+
+    @Test
+    void testFromJsonFileToObject_ValidJsonFile() throws Exception {
+        // Создаем временный файл с корректным JSON
+        File jsonFile = tempDir.resolve("test.json").toFile();
+        try (FileWriter writer = new FileWriter(jsonFile)) {
+            writer.write("{\"name\": \"John\", \"age\": 30}");
+        }
+
+        Person person = JsonReader.fromJsonNewObject(jsonFile, Person.class);
+
+        assertNotNull(person);
+        assertEquals("John", person.getName());
+        assertEquals(30, person.getAge());
+    }
 }
