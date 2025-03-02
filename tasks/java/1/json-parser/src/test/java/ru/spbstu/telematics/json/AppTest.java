@@ -101,10 +101,10 @@ class JsonReaderTest {
     }
 
     @Test
-    void testJsonToCorrectObject() throws WrongJsonStringFormatException {
+    void testJsonToCorrectNewObject() throws WrongJsonStringFormatException {
         Person person;
         try {
-            person = JsonReader.fromJsonToObject(jsonToObject, Person.class);
+            person = JsonReader.fromJsonNewObject(jsonToObject, Person.class);
             assertEquals("John Doe", person.getName());
             assertEquals(30, person.getAge());
             assertEquals("Saint-Petersburg", person.getAddress().getCity());
@@ -119,11 +119,11 @@ class JsonReaderTest {
     }
 
     @Test
-    void testJsonWithArrayToObject() throws WrongJsonStringFormatException {
+    void testJsonWithArrayToNewObject() throws WrongJsonStringFormatException {
         AnimalsCollection animalsCollection;
 
         try {
-            animalsCollection = JsonReader.fromJsonToObject(jsonWithArray, AnimalsCollection.class);
+            animalsCollection = JsonReader.fromJsonNewObject(jsonWithArray, AnimalsCollection.class);
             assertEquals("dogs", animalsCollection.getAnimals().get(0));
             assertEquals("cats", animalsCollection.getAnimals().get(1));
         } catch (NoSuchFieldException e) {
