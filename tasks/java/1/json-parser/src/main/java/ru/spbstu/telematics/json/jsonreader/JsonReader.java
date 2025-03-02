@@ -2,7 +2,6 @@ package ru.spbstu.telematics.json.jsonreader;
 
 import ru.spbstu.telematics.json.exceptions.WrongJsonStringFormatException;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -116,7 +115,7 @@ public class JsonReader {
         return result;
     }
 
-    static public <T> T fromJsonToObject(String json, Class<T> filledClass) throws
+    static public <T> T fromJsonNewObject(String json, Class<T> filledClass) throws
             WrongJsonStringFormatException,
             NoSuchFieldException,
             InstantiationException,
@@ -161,7 +160,7 @@ public class JsonReader {
                 // Устанавливаем значение поля
                 if (value instanceof Map) {
                     // Если значение — это вложенный объект, рекурсивно создаем его
-                    value = fromJsonToObject(mapToJson((Map<String, Object>) value), field.getType());
+                    value = fromJsonNewObject(mapToJson((Map<String, Object>) value), field.getType());
                 }
 
                 field.set(object, value);
@@ -194,5 +193,51 @@ public class JsonReader {
         }
         json.append("}");
         return json.toString();
+    }
+
+    static public void fromJsonToObject(String json, Object targetObject) throws
+            WrongJsonStringFormatException,
+            NoSuchFieldException,
+            IllegalAccessException,
+            NoSuchMethodException,
+            InvocationTargetException,
+            InstantiationException
+    {
+        // Преобразуем JSON в Map
+        Map<String, Object> jsonMap = fromJsonToMap(json);
+
+        // Получаем класс объекта
+        Class<?> targetClass = targetObject.getClass();
+
+        // Заполняем поля объекта
+        for (Map.Entry<String, Object> entry : jsonMap.entrySet()) {
+            String fieldName = entry.getKey();
+            Object value = entry.getValue();
+
+            // Находим поле в классе
+            Field field;
+            try {
+                field = targetClass.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException e) {
+                throw new NoSuchFieldException("The class " + targetClass + " does not have field " + fieldName);
+            }
+
+            // Делаем поле доступным (если оно private)
+            field.setAccessible(true);
+
+            // Устанавливаем значение поля
+            if (value instanceof Map) {
+                // Если значение — это вложенный объект, рекурсивно заполняем его
+                Object nestedObject = field.get(targetObject);
+                if (nestedObject == null) {
+                    // Если вложенный объект не инициализирован, создаем его
+                    nestedObject = field.getType().getDeclaredConstructor().newInstance();
+                    field.set(targetObject, nestedObject);
+                }
+                fromJsonToObject(mapToJson((Map<String, Object>) value), nestedObject);
+            } else {
+                field.set(targetObject, value);
+            }
+        }
     }
 }
