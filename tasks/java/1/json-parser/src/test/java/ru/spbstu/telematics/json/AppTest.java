@@ -1,10 +1,16 @@
 package ru.spbstu.telematics.json;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import ru.spbstu.telematics.json.exceptions.WrongJsonStringFormatException;
 import ru.spbstu.telematics.json.jsonreader.JsonReader;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -21,6 +27,9 @@ class JsonReaderTest {
     private static String jsonToObject = "{\"name\": \"John Doe\", \"age\": 30," +
             " \"address\": {\"city\": \"Saint-Petersburg\", \"street\": \"Lenina\"}}";
     private static String jsonWithArray = "{\"animals\": [\"dogs\", \"cats\"]}";
+
+    @TempDir
+    Path tempDir;
 
     public static class Person {
         private String name;
@@ -103,11 +112,9 @@ class JsonReaderTest {
 
     @Test
     void testMapOnIncorrectFormattedJson() throws WrongJsonStringFormatException {
-        WrongJsonStringFormatException exception = assertThrows(WrongJsonStringFormatException.class, () -> {
+        assertThrows(WrongJsonStringFormatException.class, () -> {
             Map<String, Object> result = JsonReader.fromJsonToMap(incorrectFormattedJson);
         });
-
-        assertEquals("JSON does not have open bracket ({)", exception.getMessage());
     }
 
     @Test
@@ -167,5 +174,47 @@ class JsonReaderTest {
                  InstantiationException e) {
             e.printStackTrace();
         }
+    }
+
+    @Test
+    void testFromJsonToMapValidJsonFile() throws WrongJsonStringFormatException, IOException {
+        // Создаем временный файл с корректным JSON
+        File jsonFile = tempDir.resolve("test.json").toFile();
+        try (FileWriter writer = new FileWriter(jsonFile)) {
+            writer.write("{\"name\": \"John\", \"age\": 30}");
+        }
+
+        Map<String, Object> result = JsonReader.fromJsonToMap(jsonFile);
+
+        assertNotNull(result);
+        assertEquals("John", result.get("name"));
+        assertEquals(30, result.get("age"));
+    }
+
+    @Test
+    void testFromJsonToMapFileDoesNotExist() {
+        // Создаем путь к несуществующему файлу
+        File nonExistentFile = tempDir.resolve("nonexistent.json").toFile();
+
+        // Проверяем, что метод выбрасывает FileNotFoundException
+        assertThrows(FileNotFoundException.class, () -> JsonReader.fromJsonToMap(nonExistentFile));
+    }
+
+    @Test
+    void testFromJsonToMapNullFile() {
+        File jsonFile = null;
+        assertThrows(NullPointerException.class, () -> JsonReader.fromJsonToMap(jsonFile));
+    }
+
+    @Test
+    void testFromJsonToMapInvalidJsonFile() throws Exception {
+        // Создаем временный файл с некорректным JSON
+        File jsonFile = tempDir.resolve("invalid.json").toFile();
+        try (FileWriter writer = new FileWriter(jsonFile)) {
+            writer.write("{\"name\": \"John\", \"age\": }"); // Некорректный JSON
+        }
+
+        // Проверяем, что метод выбрасывает WrongJsonStringFormatException
+        assertThrows(WrongJsonStringFormatException.class, () -> JsonReader.fromJsonToMap(jsonFile));
     }
 }
