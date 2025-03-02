@@ -273,4 +273,38 @@ public class JsonReader {
         }
         return result;
     }
+
+    static public <T> T fromJsonNewObject(File jsonFile, Class<T> filledClass) throws
+            WrongJsonStringFormatException,
+            IOException,
+            NoSuchFieldException,
+            InstantiationException,
+            IllegalAccessException {
+        if (jsonFile == null) {
+            throw new NullPointerException("The file is null");
+        }
+        if (!jsonFile.exists()) {
+            throw new FileNotFoundException("The file does not exist");
+        }
+
+        InputStream inputJsonStream = null;
+        try {
+            inputJsonStream = new FileInputStream(jsonFile);
+            String jsonString = new String(inputJsonStream.readAllBytes());
+
+            return fromJsonNewObject(jsonString, filledClass);
+        } catch (IOException e) {
+            throw new IOException("I/O error occurs reading from the input JSON stream", e);
+        } finally {
+            // Закрытие потока
+            if (inputJsonStream != null) {
+                try {
+                    inputJsonStream.close();
+                } catch (IOException e) {
+                    System.err.println("I/O error occurs closing input JSON stream");
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
 }
