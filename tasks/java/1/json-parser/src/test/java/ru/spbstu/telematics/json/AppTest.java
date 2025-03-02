@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import ru.spbstu.telematics.json.exceptions.WrongJsonStringFormatException;
 import ru.spbstu.telematics.json.jsonreader.JsonReader;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +29,18 @@ class JsonReaderTest {
         private int age;
         private Address address;
 
+        public void setName(String personName) {
+            this.name = personName;
+        }
+
+        public void setAge(int personAge) {
+            this.age = personAge;
+        }
+
+        public void setAddress(Address personAddress) {
+            this.address = personAddress;
+        }
+
         public String getName() {
             return name;
         }
@@ -44,6 +57,14 @@ class JsonReaderTest {
     static public class Address {
         private String city;
         private String street;
+
+        public void setCity(String city) {
+            this.city = city;
+        }
+
+        public void setStreet(String street) {
+            this.street = street;
+        }
 
         public String getCity() {
             return city;
@@ -131,6 +152,36 @@ class JsonReaderTest {
         } catch (InstantiationException e) {
             e.printStackTrace();
         } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    void testJsonToExistingObject() throws WrongJsonStringFormatException {
+        Person person = new Person();
+        person.setName("Ivan");
+        person.setAge(27);
+        Address personAddress = new Address();
+        personAddress.setCity("Moscow");
+        personAddress.setStreet("Central");
+        person.setAddress(personAddress);
+
+        try {
+            JsonReader.fromJsonToObject(jsonToObject, person);
+
+            assertEquals("John Doe", person.getName());
+            assertEquals(30, person.getAge());
+            assertEquals("Saint-Petersburg", person.getAddress().getCity());
+            assertEquals("Lenina", person.getAddress().getStreet());
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (InstantiationException e) {
             e.printStackTrace();
         }
     }
