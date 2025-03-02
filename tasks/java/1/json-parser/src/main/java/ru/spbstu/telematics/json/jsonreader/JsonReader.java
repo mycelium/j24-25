@@ -2,6 +2,7 @@ package ru.spbstu.telematics.json.jsonreader;
 
 import ru.spbstu.telematics.json.exceptions.WrongJsonStringFormatException;
 
+import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -239,5 +240,37 @@ public class JsonReader {
                 field.set(targetObject, value);
             }
         }
+    }
+
+    static public Map<String, Object> fromJsonToMap(File jsonFile) throws
+            WrongJsonStringFormatException,
+            IOException
+    {
+        if (jsonFile == null) {
+            throw new NullPointerException("The file is null");
+        }
+        if (!jsonFile.exists()) {
+            throw new FileNotFoundException("The file does not exist");
+        }
+
+        Map<String, Object> result = null;
+        InputStream inputJsonStream = null;
+        try {
+            inputJsonStream = new FileInputStream(jsonFile);
+            String jsonString = new String(inputJsonStream.readAllBytes());
+            result = fromJsonToMap(jsonString);
+        } catch (IOException e) {
+            throw new IOException("I/O error occurs reading from the input JSON stream");
+        } finally {
+            try {
+                if (inputJsonStream != null) {
+                    inputJsonStream.close();
+                }
+            } catch (IOException e) {
+                System.err.println("I/O error occurs closing input JSON stream");
+                e.printStackTrace();
+            }
+        }
+        return result;
     }
 }
