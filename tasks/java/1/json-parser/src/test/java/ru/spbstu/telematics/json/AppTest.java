@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import ru.spbstu.telematics.json.exceptions.WrongJsonStringFormatException;
 import ru.spbstu.telematics.json.jsoninteraction.JsonReader;
+import ru.spbstu.telematics.json.jsoninteraction.JsonWriter;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -265,5 +266,20 @@ class JsonReaderTest {
         assertNotNull(person.getAddress());
         assertEquals("Moscow", person.getAddress().getCity());
         assertEquals("Lenina", person.getAddress().getStreet());
+    }
+
+    @Test
+    void testFromExistingObjectToFile() throws IllegalAccessException {
+        Person person = new Person();
+        person.setName("Alex");
+        person.setAge(12);
+        Address address = new Address();
+        address.setCity("New York");
+        address.setStreet("Times Square");
+        person.setAddress(address);
+
+        String expected = "{\"name\":\"Alex\",\"age\":12," +
+                "\"address\":{\"city\":\"New York\",\"street\":\"Times Square\"}}";
+        assertEquals(expected, JsonWriter.fromObjectToJsonString(person));
     }
 }
