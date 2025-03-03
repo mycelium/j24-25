@@ -3,7 +3,7 @@ package ru.spbstu.telematics.json;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import ru.spbstu.telematics.json.exceptions.WrongJsonStringFormatException;
-import ru.spbstu.telematics.json.jsonreader.JsonReader;
+import ru.spbstu.telematics.json.jsoninteraction.JsonReader;
 
 import java.io.File;
 import java.io.FileNotFoundException;

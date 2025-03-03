@@ -1,4 +1,4 @@
-package ru.spbstu.telematics.json.jsonreader;
+package ru.spbstu.telematics.json.jsoninteraction;
 
 import ru.spbstu.telematics.json.exceptions.WrongJsonStringFormatException;
 
@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class JsonReader {
+public class JsonReader implements JsonInteractor {
     static public Map<String, Object> fromJsonToMap(String json) throws WrongJsonStringFormatException {
         Map<String, Object> result = new HashMap<String, Object>();
         if (json == null) {
@@ -161,7 +161,7 @@ public class JsonReader {
                 // Устанавливаем значение поля
                 if (value instanceof Map) {
                     // Если значение — это вложенный объект, рекурсивно создаем его
-                    value = fromJsonNewObject(mapToJson((Map<String, Object>) value), field.getType());
+                    value = fromJsonNewObject(JsonInteractor.mapToJson((Map<String, Object>) value), field.getType());
                 }
 
                 field.set(object, value);
@@ -176,24 +176,6 @@ public class JsonReader {
                             + ", its field, method or constructor; caused by " + e.getMessage()
             );
         }
-    }
-
-    private static String mapToJson(Map<String, Object> map) {
-        StringBuilder json = new StringBuilder("{");
-        for (Map.Entry<String, Object> entry : map.entrySet()) {
-            if (json.length() > 1) {
-                json.append(",");
-            }
-            json.append("\"").append(entry.getKey()).append("\":");
-            Object value = entry.getValue();
-            if (value instanceof String) {
-                json.append("\"").append(value).append("\"");
-            } else {
-                json.append(value);
-            }
-        }
-        json.append("}");
-        return json.toString();
     }
 
     static public void fromJsonToObject(String json, Object targetObject) throws
@@ -235,7 +217,7 @@ public class JsonReader {
                     nestedObject = field.getType().getDeclaredConstructor().newInstance();
                     field.set(targetObject, nestedObject);
                 }
-                fromJsonToObject(mapToJson((Map<String, Object>) value), nestedObject);
+                fromJsonToObject(JsonInteractor.mapToJson((Map<String, Object>) value), nestedObject);
             } else {
                 field.set(targetObject, value);
             }
@@ -348,4 +330,6 @@ public class JsonReader {
             }
         }
     }
+
+
 }
