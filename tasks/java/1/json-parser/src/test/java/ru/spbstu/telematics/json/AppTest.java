@@ -247,4 +247,23 @@ class JsonReaderTest {
         assertEquals("John", person.getName());
         assertEquals(30, person.getAge());
     }
+
+    @Test
+    void testFromJsonToExistingObjectValidJsonFile() throws Exception {
+        File jsonFile = tempDir.resolve("test.json").toFile();
+        try (FileWriter writer = new FileWriter(jsonFile)) {
+            writer.write("{\"name\": \"John\", \"age\": 30, \"address\": {\"city\": \"Moscow\", \"street\": \"Lenina\"}}");
+        }
+
+        Person person = new Person();
+
+        JsonReader.fromJsonToObject(jsonFile, person);
+
+        assertNotNull(person);
+        assertEquals("John", person.getName());
+        assertEquals(30, person.getAge());
+        assertNotNull(person.getAddress());
+        assertEquals("Moscow", person.getAddress().getCity());
+        assertEquals("Lenina", person.getAddress().getStreet());
+    }
 }
