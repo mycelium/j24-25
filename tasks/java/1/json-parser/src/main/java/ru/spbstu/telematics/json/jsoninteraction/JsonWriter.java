@@ -11,6 +11,18 @@ import java.util.Map;
  */
 public class JsonWriter implements JsonInteractor {
     /**
+     * Write Map into JSON formatted string. Check {@link JsonWriter#mapToJson(Map)} for more details
+     * @param map Map of (String, Object) that will be written
+     * @return JSON formatted string
+     */
+    static public String fromMapToJson(Map<String, Object> map) {
+        if (map == null) {
+            throw new NullPointerException("Converting map is null");
+        }
+        return JsonInteractor.mapToJson(map);
+    }
+
+    /**
      * Writes fields of the {@code object} in JSON string
      * @param object object that should be written in JSON string
      * @return JSON string that contains all {@code object}'s fields
