@@ -7,6 +7,8 @@ import java.util.Map;
  * Interface for interacting with JSONs
  * It contains methods for writing Map of (String, Object) into JSON string and
  * reading files into JSON string
+ *
+ * @author Astafiev Igor (StanleyStanMarsh)
  */
 public interface JsonInteractor {
     /**

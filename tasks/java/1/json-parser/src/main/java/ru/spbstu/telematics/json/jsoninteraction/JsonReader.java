@@ -13,6 +13,8 @@ import java.util.function.Supplier;
 /**
  * Class for reading JSON to Map, creating instance of class with fields from JSON,
  * filling fields of existing object with JSON fields
+ *
+ * @author Astafiev Igor (StanleyStanMarsh)
  */
 public class JsonReader implements JsonInteractor {
     /**
