@@ -213,23 +213,30 @@ public class JsonReader implements JsonInteractor {
     }
 
 
-    static public void fromJsonToObject(String json, Object targetObject) throws
-            WrongJsonStringFormatException,
-            NoSuchFieldException,
-            IllegalAccessException,
-            NoSuchMethodException,
-            InvocationTargetException,
-            InstantiationException {
-        // Преобразуем JSON в Map
-        Map<String, Object> jsonMap = fromJsonToMap(json);
+    static public void fromJsonToObject(String json, Object targetObject)
+            throws WrongJsonStringFormatException, NoSuchFieldException,
+            IllegalAccessException, NoSuchMethodException,
+            InvocationTargetException, InstantiationException {
 
         // Получаем класс объекта
         Class<?> targetClass = targetObject.getClass();
 
-        // Заполняем поля объекта
-        for (Map.Entry<String, Object> entry : jsonMap.entrySet()) {
-            String fieldName = entry.getKey();
-            Object value = entry.getValue();
+        // Убираем фигурные скобки
+        json = json.substring(1, json.length() - 1).strip();
+        if (json.isEmpty()) return;
+
+        // Разделяем JSON на пары ключ-значение
+        List<String> keyValuePairs = splitJson(json);
+
+        for (String pair : keyValuePairs) {
+            String[] keyValue = pair.split(":", 2);
+            if (keyValue.length != 2) {
+                throw new WrongJsonStringFormatException("Invalid key-value pair: " + pair);
+            }
+
+            // Извлекаем ключ (имя поля) и значение
+            String fieldName = keyValue[0].strip().replaceAll("^\"|\"$", "");
+            String value = keyValue[1].strip();
 
             // Находим поле в классе
             Field field;
@@ -241,20 +248,32 @@ public class JsonReader implements JsonInteractor {
 
             // Делаем поле доступным (если оно private)
             field.setAccessible(true);
+            Class<?> fieldType = field.getType();
 
-            // Устанавливаем значение поля
-            if (value instanceof Map) {
-                // Если значение — это вложенный объект, рекурсивно заполняем его
+            // Определяем значение поля
+            Object parsedValue;
+            if (value.startsWith("{") && value.endsWith("}")) {
+                // Вложенный объект
                 Object nestedObject = field.get(targetObject);
                 if (nestedObject == null) {
-                    // Если вложенный объект не инициализирован, создаем его
-                    nestedObject = field.getType().getDeclaredConstructor().newInstance();
+                    nestedObject = fieldType.getDeclaredConstructor().newInstance();
                     field.set(targetObject, nestedObject);
                 }
-                fromJsonToObject(JsonInteractor.mapToJson((Map<String, Object>) value), nestedObject);
+                fromJsonToObject(value, nestedObject);
+                parsedValue = nestedObject;
+            } else if (value.startsWith("[") && value.endsWith("]")) {
+                // Коллекция
+                ParameterizedType genericType = (ParameterizedType) field.getGenericType();
+                Class<?> collectionType = (Class<?>) genericType.getActualTypeArguments()[0];
+
+                Supplier<Collection<Object>> collectionSupplier = getCollectionSupplier(fieldType);
+                parsedValue = parseArray(value, collectionSupplier, collectionType);
             } else {
-                field.set(targetObject, value);
+                // Примитивные типы
+                parsedValue = parseValue(value);
             }
+
+            field.set(targetObject, parsedValue);
         }
     }
 
