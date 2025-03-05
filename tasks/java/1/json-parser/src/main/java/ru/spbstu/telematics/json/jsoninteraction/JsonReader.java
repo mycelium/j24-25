@@ -161,7 +161,8 @@ public class JsonReader implements JsonInteractor {
      * @param json JSON string
      * @param fillingClass the class for which the instance is being created
      * @return the instance of the specified class
-     * @throws WrongJsonStringFormatException if {@code json} is null or empty, or does not start/end with brackets
+     * @throws WrongJsonStringFormatException if {@code json} is null or empty, or does not start/end with brackets,
+     * or string of pairs cannot be split into key and value
      * @throws InstantiationException if {@code fillingClass} is abstract
      * @throws IllegalAccessException if it cannot get access to {@code fillingClass}'s constructor
      * @throws NoSuchFieldException if there is no such field in {@code fillingClass}
@@ -266,7 +267,17 @@ public class JsonReader implements JsonInteractor {
         }
     }
 
-
+    /**
+     * Fills, if it is possible, the {@code targetObject} with values from JSON string
+     * @param json JSON string
+     * @param targetObject object that needed to be filled
+     * @throws WrongJsonStringFormatException when string of pair cannot be split into key and value
+     * @throws NoSuchFieldException if there is no such field in {@code targetObject}
+     * @throws IllegalAccessException if it cannot get access to {@code targetObject}'s nested object or field
+     * @throws NoSuchMethodException if there is no default constructor of {@code targetObject}'s nested object
+     * @throws InvocationTargetException if the constructor of {@code targetObject}'s nested object throws an exception
+     * @throws InstantiationException if the class of {@code targetObject}'s nested object is abstract
+     */
     static public void fromJsonToObject(String json, Object targetObject)
             throws WrongJsonStringFormatException, NoSuchFieldException,
             IllegalAccessException, NoSuchMethodException,
@@ -308,10 +319,27 @@ public class JsonReader implements JsonInteractor {
             Object parsedValue;
             if (value.startsWith("{") && value.endsWith("}")) {
                 // Вложенный объект
-                Object nestedObject = field.get(targetObject);
+                Object nestedObject = null;
+                try {
+                    nestedObject = field.get(targetObject);
+                } catch (IllegalAccessException e) {
+                    throw new IllegalAccessException("Cannot get nested object from " + targetObject);
+                }
                 if (nestedObject == null) {
-                    nestedObject = fieldType.getDeclaredConstructor().newInstance();
-                    field.set(targetObject, nestedObject);
+                    try {
+                        try {
+                            nestedObject = fieldType.getDeclaredConstructor().newInstance();
+                        } catch (NoSuchMethodException e) {
+                            throw new NoSuchMethodException("There is no default constructor in " + nestedObject);
+                        }
+                    } catch (IllegalAccessException e) {
+                        throw new IllegalAccessException("Cannot call constructor of nested object from " + targetObject);
+                    }
+                    try {
+                        field.set(targetObject, nestedObject);
+                    } catch (IllegalAccessException e) {
+                        throw new IllegalAccessException("Cannot set the value of nested object from " + targetObject);
+                    }
                 }
                 fromJsonToObject(value, nestedObject);
                 parsedValue = nestedObject;
@@ -327,7 +355,11 @@ public class JsonReader implements JsonInteractor {
                 parsedValue = parseValue(value);
             }
 
-            field.set(targetObject, parsedValue);
+            try {
+                field.set(targetObject, parsedValue);
+            } catch (IllegalAccessException e) {
+                throw new IllegalAccessException("Cannot set the field of " + targetObject + " with " + parsedValue);
+            }
         }
     }
 
