@@ -10,7 +10,18 @@ import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.function.Supplier;
 
+/**
+ * Class for reading JSON to Map, creating instance of class with fields from JSON,
+ * filling fields of existing object with JSON fields
+ */
 public class JsonReader implements JsonInteractor {
+    /**
+     * Reads JSON string to Map of (String, Object). Check {@link #readJson(String)} method for more parsing details
+     * @param json JSON string
+     * @return filled Map
+     * @throws WrongJsonStringFormatException when JSON string has wrong format (starts or ends with wrong token,
+     * contains different number of opening and closing brackets)
+     */
     static public Map<String, Object> fromJsonToMap(String json) throws WrongJsonStringFormatException {
         Map<String, Object> result = new HashMap<String, Object>();
         if (json == null) {
@@ -31,7 +42,12 @@ public class JsonReader implements JsonInteractor {
         return readJson(json);
     }
 
-    private static List<String> splitJson(String json) throws WrongJsonStringFormatException {
+    /**
+     * Splits JSON string into strings of key-value pairs
+     * @param json JSON string
+     * @return List of strings of key-value pairs
+     */
+    private static List<String> splitJson(String json) {
         List<String> result = new ArrayList<>();
         int depth = 0;
         StringBuilder current = new StringBuilder();
@@ -53,6 +69,12 @@ public class JsonReader implements JsonInteractor {
         return result;
     }
 
+    /**
+     * Parses value depending on its JSON type
+     * @param value string implementation of value
+     * @return value converted in specified object
+     * @throws WrongJsonStringFormatException when parse unknown type (meet illegal or unexpected token)
+     */
     private static Object parseValue(String value) throws WrongJsonStringFormatException {
         if (value.startsWith("{") && value.endsWith("}")) {
             // Вложенный объект
@@ -80,6 +102,15 @@ public class JsonReader implements JsonInteractor {
         }
     }
 
+    /**
+     * Parses JSON array value into specified collection
+     * @param arrayJson string implementation of array
+     * @param collectionSupplier specified collection
+     * @param elementType type of collection's elements
+     * @return collection that contains elements of JSON array
+     * @param <T> specified type of collection
+     * @throws WrongJsonStringFormatException when parsing of any element of the array goes wrong
+     */
     private static <T extends Collection<Object>> T parseArray(String arrayJson, Supplier<T> collectionSupplier, Class<?> elementType)
             throws WrongJsonStringFormatException {
 
@@ -99,6 +130,12 @@ public class JsonReader implements JsonInteractor {
     }
 
 
+    /**
+     * Splits strings of pairs of key-values and puts them in a Map of (String, Object)
+     * @param json JSON string
+     * @return map filled Map
+     * @throws WrongJsonStringFormatException when string cannot be split into key and value
+     */
     private static Map<String, Object> readJson(String json) throws WrongJsonStringFormatException {
         Map<String, Object> result = new HashMap<>();
         json = json.substring(1, json.length() - 1).strip();
