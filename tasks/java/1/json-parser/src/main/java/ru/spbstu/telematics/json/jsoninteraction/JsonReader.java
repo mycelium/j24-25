@@ -155,7 +155,18 @@ public class JsonReader implements JsonInteractor {
         return result;
     }
 
-    static public <T> T fromJsonNewObject(String json, Class<T> filledClass)
+    /**
+     * Creates the new instance of the specified class {@code fillingClass} and fills it with values from JSON string
+     * @param <T> type of filling class
+     * @param json JSON string
+     * @param fillingClass the class for which the instance is being created
+     * @return the instance of the specified class
+     * @throws WrongJsonStringFormatException if {@code json} is null or empty, or does not start/end with brackets
+     * @throws InstantiationException if {@code fillingClass} is abstract
+     * @throws IllegalAccessException if it cannot get access to {@code fillingClass}'s constructor
+     * @throws NoSuchFieldException if there is no such field in {@code fillingClass}
+     */
+    static public <T> T fromJsonNewObject(String json, Class<T> fillingClass)
             throws WrongJsonStringFormatException,
             InstantiationException,
             IllegalAccessException,
@@ -171,15 +182,15 @@ public class JsonReader implements JsonInteractor {
 
         try {
             // Создаем экземпляр целевого класса
-            Constructor<T> constructor = filledClass.getDeclaredConstructor();
+            Constructor<T> constructor = fillingClass.getDeclaredConstructor();
             constructor.setAccessible(true);
             T object = null;
             try {
                 object = constructor.newInstance();
             } catch (InstantiationException e) {
-                throw new InstantiationException("The " + filledClass + " class is abstract");
+                throw new InstantiationException("The " + fillingClass + " class is abstract");
             } catch (IllegalAccessException e) {
-                throw new IllegalAccessException("Cannot access to constructor of " + filledClass);
+                throw new IllegalAccessException("Cannot access to constructor of " + fillingClass);
             }
 
             // Убираем { } и разделяем JSON на пары ключ-значение
@@ -198,9 +209,9 @@ public class JsonReader implements JsonInteractor {
 
                 Field field = null;
                 try {
-                    field = filledClass.getDeclaredField(fieldName);
+                    field = fillingClass.getDeclaredField(fieldName);
                 } catch (NoSuchFieldException e) {
-                    throw new NoSuchFieldException("There is no field " + fieldName + " in " + filledClass);
+                    throw new NoSuchFieldException("There is no field " + fieldName + " in " + fillingClass);
                 }
                 field.setAccessible(true);
                 Class<?> fieldType = field.getType();
@@ -228,11 +239,17 @@ public class JsonReader implements JsonInteractor {
             return object;
 
         } catch (NoSuchMethodException | InvocationTargetException e) {
-            throw new RuntimeException("Cannot instantiate object of class " + filledClass, e);
+            throw new RuntimeException("Cannot instantiate object of class " + fillingClass, e);
         }
     }
 
-
+    /**
+     * Checks whether the passed class is compatible with a specific Collection implementation and
+     * returns a reference to the constructor of the required collection.
+     * @param fieldType the type of the class's field
+     * @return reference to the constructor
+     * @throws IllegalArgumentException if {@code fieldType} is unsupported type
+     */
     private static Supplier<Collection<Object>> getCollectionSupplier(Class<?> fieldType) {
         if (fieldType.isAssignableFrom(ArrayList.class)) {
             return ArrayList::new;
