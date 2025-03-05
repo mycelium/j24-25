@@ -6,6 +6,7 @@ import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -58,7 +59,7 @@ public class JsonReader implements JsonInteractor {
             return readJson(value);
         } else if (value.startsWith("[") && value.endsWith("]")) {
             // Массив
-            return parseArray(value, ArrayList::new);
+            return parseArray(value, ArrayList::new, Object.class);
         } else if (value.equals("true") || value.equals("false")) {
             // Булево значение
             return Boolean.valueOf(value);
@@ -70,8 +71,7 @@ public class JsonReader implements JsonInteractor {
             return value.substring(1, value.length() - 1);
         } else if (value.matches("-?\\d+(\\.\\d+)?")) {
             // Число (целое или с плавающей точкой)
-            if (value.contains("."))
-            {
+            if (value.contains(".")) {
                 return Double.valueOf(value);
             }
             return Integer.valueOf(value);
@@ -80,24 +80,24 @@ public class JsonReader implements JsonInteractor {
         }
     }
 
-    private static <T extends Collection<Object>> T parseArray(String array, Supplier<T> collectionSupplier)
+    private static <T extends Collection<Object>> T parseArray(String arrayJson, Supplier<T> collectionSupplier, Class<?> elementType)
             throws WrongJsonStringFormatException {
-        T result = collectionSupplier.get();
 
-        // Убираем квадратные скобки []
-        array = array.substring(1, array.length() - 1).strip();
-        if (array.isEmpty()) {
-            return result;
+        T collection = collectionSupplier.get();
+        arrayJson = arrayJson.substring(1, arrayJson.length() - 1).strip();
+
+        if (arrayJson.isEmpty()) {
+            return collection;
         }
 
-        // Разделяем массив на элементы
-        List<String> elements = splitJson(array);
+        List<String> elements = splitJson(arrayJson);
         for (String element : elements) {
-            result.add(parseValue(element.strip()));
+            element = element.strip();
+            collection.add(parseValue(element));
         }
-
-        return result;
+        return collection;
     }
+
 
     private static Map<String, Object> readJson(String json) throws WrongJsonStringFormatException {
         Map<String, Object> result = new HashMap<>();
@@ -118,67 +118,100 @@ public class JsonReader implements JsonInteractor {
         return result;
     }
 
-    static public <T> T fromJsonNewObject(String json, Class<T> filledClass) throws
-            WrongJsonStringFormatException,
-            NoSuchFieldException,
+    static public <T> T fromJsonNewObject(String json, Class<T> filledClass)
+            throws WrongJsonStringFormatException,
             InstantiationException,
-            IllegalAccessException
-    {
-        // Преобразуем JSON в Map
-        Map<String, Object> jsonMap = fromJsonToMap(json);
+            IllegalAccessException,
+            NoSuchFieldException {
+
+        if (json == null || json.isEmpty()) {
+            throw new WrongJsonStringFormatException("JSON string is empty or null");
+        }
+
+        if (!json.startsWith("{") || !json.endsWith("}")) {
+            throw new WrongJsonStringFormatException("JSON must be enclosed in curly braces");
+        }
 
         try {
             // Создаем экземпляр целевого класса
-            T object;
-            Constructor<T> ctr;
+            Constructor<T> constructor = filledClass.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            T object = null;
             try {
-                ctr = filledClass.getDeclaredConstructor();
-            } catch (NoSuchMethodException e) {
-                throw new RuntimeException("The constructor of "
-                        + filledClass + " is not available");
-            }
-            try {
-                object = ctr.newInstance();
-            } catch (InvocationTargetException e) {
-                throw new RuntimeException("The object of "
-                        + filledClass + "cannot be instantiated");
+                object = constructor.newInstance();
+            } catch (InstantiationException e) {
+                throw new InstantiationException("The " + filledClass + " class is abstract");
+            } catch (IllegalAccessException e) {
+                throw new IllegalAccessException("Cannot access to constructor of " + filledClass);
             }
 
-            // Заполняем поля объекта
-            for (Map.Entry<String, Object> entry : jsonMap.entrySet()) {
-                String fieldName = entry.getKey();
-                Object value = entry.getValue();
+            // Убираем { } и разделяем JSON на пары ключ-значение
+            json = json.substring(1, json.length() - 1).strip();
+            List<String> keyValuePairs = splitJson(json);
 
-                // Находим поле в классе
-                Field field;
+            for (String pair : keyValuePairs) {
+                String[] keyValue = pair.split(":", 2);
+                if (keyValue.length != 2) {
+                    throw new WrongJsonStringFormatException("Invalid key-value pair: " + pair);
+                }
+
+                // Получаем имя поля и его значение
+                String fieldName = keyValue[0].strip().replaceAll("^\"|\"$", ""); // Убираем кавычки
+                String fieldValue = keyValue[1].strip();
+
+                Field field = null;
                 try {
                     field = filledClass.getDeclaredField(fieldName);
                 } catch (NoSuchFieldException e) {
-                    throw new NoSuchFieldException("The class " + filledClass + " does not have field " + fieldName);
+                    throw new NoSuchFieldException("There is no field " + fieldName + " in " + filledClass);
                 }
-
-                // Делаем поле доступным (если оно private)
                 field.setAccessible(true);
+                Class<?> fieldType = field.getType();
 
-                // Устанавливаем значение поля
-                if (value instanceof Map) {
-                    // Если значение — это вложенный объект, рекурсивно создаем его
-                    value = fromJsonNewObject(JsonInteractor.mapToJson((Map<String, Object>) value), field.getType());
+                // Проверяем, является ли поле коллекцией
+                if (Collection.class.isAssignableFrom(fieldType)) {
+                    ParameterizedType genericType = (ParameterizedType) field.getGenericType();
+                    Class<?> collectionElementType = (Class<?>) genericType.getActualTypeArguments()[0];
+
+                    Supplier<Collection<Object>> collectionSupplier = getCollectionSupplier(fieldType);
+                    Collection<Object> collection = parseArray(fieldValue, collectionSupplier, collectionElementType);
+
+                    field.set(object, collection);
                 }
-
-                field.set(object, value);
+                // Если поле является вложенным объектом
+                else if (fieldValue.startsWith("{") && fieldValue.endsWith("}")) {
+                    Object nestedObject = fromJsonNewObject(fieldValue, fieldType);
+                    field.set(object, nestedObject);
+                }
+                else {
+                    Object parsedValue = parseValue(fieldValue);
+                    field.set(object, parsedValue);
+                }
             }
-
             return object;
-        } catch (InstantiationException e) {
-            throw new InstantiationException("The object of " + filledClass + " cannot be instantiated");
-        } catch (IllegalAccessException e) {
-            throw new IllegalAccessException(
-                    "Cannot get access to the definition of the class " + filledClass
-                            + ", its field, method or constructor; caused by " + e.getMessage()
-            );
+
+        } catch (NoSuchMethodException | InvocationTargetException e) {
+            throw new RuntimeException("Cannot instantiate object of class " + filledClass, e);
         }
     }
+
+
+    private static Supplier<Collection<Object>> getCollectionSupplier(Class<?> fieldType) {
+        if (fieldType.isAssignableFrom(ArrayList.class)) {
+            return ArrayList::new;
+        } else if (fieldType.isAssignableFrom(LinkedList.class)) {
+            return LinkedList::new;
+        } else if (fieldType.isAssignableFrom(HashSet.class)) {
+            return HashSet::new;
+        } else if (fieldType.isAssignableFrom(TreeSet.class)) {
+            return TreeSet::new;
+        } else if (fieldType.isAssignableFrom(ArrayDeque.class)) {
+            return ArrayDeque::new;
+        } else {
+            throw new IllegalArgumentException("Unsupported collection type: " + fieldType.getSimpleName());
+        }
+    }
+
 
     static public void fromJsonToObject(String json, Object targetObject) throws
             WrongJsonStringFormatException,
@@ -186,8 +219,7 @@ public class JsonReader implements JsonInteractor {
             IllegalAccessException,
             NoSuchMethodException,
             InvocationTargetException,
-            InstantiationException
-    {
+            InstantiationException {
         // Преобразуем JSON в Map
         Map<String, Object> jsonMap = fromJsonToMap(json);
 
@@ -237,8 +269,7 @@ public class JsonReader implements JsonInteractor {
             WrongJsonStringFormatException,
             NoSuchFieldException,
             InstantiationException,
-            IllegalAccessException
-    {
+            IllegalAccessException {
 
         return fromJsonNewObject(JsonInteractor.jsonFileToJsonString(jsonFile), filledClass);
 
@@ -251,8 +282,7 @@ public class JsonReader implements JsonInteractor {
             InvocationTargetException,
             IllegalAccessException,
             NoSuchMethodException,
-            InstantiationException
-    {
+            InstantiationException {
 
         fromJsonToObject(JsonInteractor.jsonFileToJsonString(jsonFile), targetObject);
 
