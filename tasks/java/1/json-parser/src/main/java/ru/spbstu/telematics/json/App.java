@@ -4,6 +4,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 import ru.spbstu.telematics.json.exceptions.WrongJsonStringFormatException;
+import ru.spbstu.telematics.json.jsoninteraction.JsonInteractor;
 import ru.spbstu.telematics.json.jsoninteraction.JsonReader;
 import ru.spbstu.telematics.json.jsoninteraction.JsonWriter;
 
@@ -139,5 +140,11 @@ public class App {
             e.printStackTrace();
         }
         System.out.println("Parsed Object: " + parsedPerson);
+
+        try {
+            System.out.println(JsonWriter.fromMapToJson(JsonReader.fromJsonToMap(json)));
+        } catch (WrongJsonStringFormatException e) {
+            e.printStackTrace();
+        }
     }
 }
