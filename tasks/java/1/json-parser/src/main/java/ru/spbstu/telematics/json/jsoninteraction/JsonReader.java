@@ -6,10 +6,8 @@ import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Supplier;
 
 public class JsonReader implements JsonInteractor {
     static public Map<String, Object> fromJsonToMap(String json) throws WrongJsonStringFormatException {
@@ -60,7 +58,7 @@ public class JsonReader implements JsonInteractor {
             return readJson(value);
         } else if (value.startsWith("[") && value.endsWith("]")) {
             // Массив
-            return parseArray(value);
+            return parseArray(value, ArrayList::new);
         } else if (value.equals("true") || value.equals("false")) {
             // Булево значение
             return Boolean.valueOf(value);
@@ -82,18 +80,22 @@ public class JsonReader implements JsonInteractor {
         }
     }
 
-    private static List<Object> parseArray(String array) throws WrongJsonStringFormatException {
-        List<Object> result = new ArrayList<>();
+    private static <T extends Collection<Object>> T parseArray(String array, Supplier<T> collectionSupplier)
+            throws WrongJsonStringFormatException {
+        T result = collectionSupplier.get();
+
         // Убираем квадратные скобки []
         array = array.substring(1, array.length() - 1).strip();
         if (array.isEmpty()) {
             return result;
         }
+
         // Разделяем массив на элементы
         List<String> elements = splitJson(array);
         for (String element : elements) {
             result.add(parseValue(element.strip()));
         }
+
         return result;
     }
 
