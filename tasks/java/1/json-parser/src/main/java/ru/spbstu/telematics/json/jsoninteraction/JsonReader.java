@@ -363,23 +363,49 @@ public class JsonReader implements JsonInteractor {
         }
     }
 
+    /**
+     * Reads JSON file to Map of (String, Object). Check {@link #fromJsonToMap(String)} method for more details
+     * @param jsonFile JSON file
+     * @return filled Map
+     * @throws IOException when I/O error occurs while reading file
+     * (check {@link JsonInteractor#jsonFileToJsonString(File)})
+     * @throws WrongJsonStringFormatException when JSON string has wrong format (check {@link #fromJsonToMap(String)})
+     */
     static public Map<String, Object> fromJsonToMap(File jsonFile) throws IOException, WrongJsonStringFormatException {
 
         return fromJsonToMap(JsonInteractor.jsonFileToJsonString(jsonFile));
 
     }
 
-    static public <T> T fromJsonNewObject(File jsonFile, Class<T> filledClass) throws
+    /**
+     * Creates the new instance of the specified class {@code fillingClass} and fills it with values from JSON file.
+     * Check {@link #fromJsonNewObject(String, Class)} method for more details
+     * @param jsonFile JSON file
+     * @param fillingClass the class for which the instance is being created
+     * @return the instance of the specified class
+     * @param <T> type of filling class
+     * @implNote For more details about exceptions check {@link #fromJsonNewObject(String, Class)} and
+     * {@link JsonInteractor#jsonFileToJsonString(File)} methods
+     */
+    static public <T> T fromJsonNewObject(File jsonFile, Class<T> fillingClass) throws
             IOException,
             WrongJsonStringFormatException,
             NoSuchFieldException,
             InstantiationException,
             IllegalAccessException {
 
-        return fromJsonNewObject(JsonInteractor.jsonFileToJsonString(jsonFile), filledClass);
+        return fromJsonNewObject(JsonInteractor.jsonFileToJsonString(jsonFile), fillingClass);
 
     }
 
+    /**
+     * Fills, if it is possible, the {@code targetObject} with values from JSON file.
+     * Check {@link #fromJsonToObject(String, Object)} method for more details
+     * @param jsonFile JSON file
+     * @param targetObject object that needed to be filled
+     * @implNote For more details about exceptions check {@link #fromJsonToObject(String, Object)} and
+     * {@link JsonInteractor#jsonFileToJsonString(File)} methods
+     */
     static public void fromJsonToObject(File jsonFile, Object targetObject) throws
             WrongJsonStringFormatException,
             IOException,
