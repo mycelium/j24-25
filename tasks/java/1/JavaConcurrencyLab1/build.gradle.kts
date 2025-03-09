@@ -2,8 +2,8 @@ plugins {
     id("java")
 }
 
-group = "ru.scrafit"
-version = "1.0-SNAPSHOT"
+group = "ru.lab.json_parser"
+version = ""
 
 repositories {
     mavenCentral()
@@ -16,4 +16,21 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+// для формирования jar-файла под библиотеку
+
+val jarBaseName = "json_parser"
+
+tasks.withType<Jar> {
+    archiveBaseName.set(jarBaseName)
+}
+
+task("fatJar", type = Jar::class) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes["Implementation-Title"] = "Gradle Jar File"
+    }
+    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
+    with(tasks.jar.get() as CopySpec)
 }
