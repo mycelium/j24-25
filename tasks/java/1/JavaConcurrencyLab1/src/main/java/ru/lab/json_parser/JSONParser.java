@@ -67,7 +67,7 @@ public class JSONParser {
     private static <T> T fillClazzWithMap(Map<String, Object> map, Class<T> clazz){
         try{
             List<Object> arguments = new ArrayList<>();
-            Constructor<?>[] constructors = clazz.getConstructors();
+            Constructor<?>[] constructors = clazz.getDeclaredConstructors();
             for (Field field : clazz.getDeclaredFields()) {
                 String fieldName = field.getName();
                 if (map.containsKey(fieldName)) {
@@ -94,6 +94,7 @@ public class JSONParser {
             }
             for (Constructor<?> constructor: constructors){
                 try{
+                    constructor.setAccessible(true);
                     return (T) constructor.newInstance(arguments.toArray());
                 } catch (Exception e){
                     e.printStackTrace();
