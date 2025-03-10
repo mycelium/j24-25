@@ -1,7 +1,9 @@
 package main.java.ru.spbstu;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class JsonParser {
 
@@ -10,17 +12,46 @@ public class JsonParser {
     }
 
     private Map<String, Object> parseJson(String json) {
+        json = json.trim();
         if (json.startsWith("{") && json.endsWith("}")) {
-            json = json.substring(1, json.length() - 1);
+            json = json.substring(1, json.length() - 1).trim();
             Map<String, Object> map = new HashMap<>();
 
-            String[] pairs = json.split(",");
-            for (String pair : pairs) {
-                String[] keyValue = pair.split(":", 2); // Разбиваем на ключ и значение
+            StringBuilder buffer = new StringBuilder();
+            String key = null;
+            boolean inQuotes = false;
+            int bracketCount = 0; // счетчик для массивов
 
-                String key = keyValue[0].replace("\"", "");
-                String value = keyValue[1];
-                map.put(key, extractValue(value));
+            for (char ch : json.toCharArray()) {
+                if (ch == '"' && bracketCount == 0) {
+                    inQuotes = !inQuotes; //  внутри/вне кавычек
+                }
+
+                if (ch == '[' && !inQuotes) {
+                    bracketCount++;
+                }
+
+                if (ch == ']' && !inQuotes) {
+                    bracketCount--;
+                }
+
+                if (ch == ':' && !inQuotes && bracketCount == 0) {
+                    key = buffer.toString().trim().replace("\"", "");
+                    buffer.setLength(0);
+                    continue;
+                }
+
+                if (ch == ',' && !inQuotes && bracketCount == 0) {
+                    map.put(key, extractValue(buffer.toString().trim()));
+                    buffer.setLength(0);
+                    continue;
+                }
+
+                buffer.append(ch);
+            }
+
+            if (key != null && !buffer.isEmpty()) {
+                map.put(key, extractValue(buffer.toString().trim()));
             }
 
             return map;
@@ -33,6 +64,13 @@ public class JsonParser {
         value = value.trim();
         if (value.startsWith("\"") && value.endsWith("\"")) {
             return value.substring(1, value.length() - 1); // Строка
+        } else if (value.startsWith("[") && value.endsWith("]")) {
+            // Обработка массива (без вложенности)
+            String[] elements = value.substring(1, value.length() - 1).split(",");
+            return Arrays.stream(elements)
+                    .map(String::trim) // Убираем лишние пробелы
+                    .map(this::extractValue) // Обрабатываем каждый элемент
+                    .collect(Collectors.toList());
         } else if (value.equals("null")) {
             return null; // null
         } else if (value.equals("true") || value.equals("false")) {
@@ -40,7 +78,12 @@ public class JsonParser {
         } else if (value.contains(".")) {
             return Double.parseDouble(value); // Число с плавающей точкой
         } else {
-            return Integer.parseInt(value); // Целое число
+            try {
+                return Integer.parseInt(value); // Целое число
+            } catch (NumberFormatException e) {
+                // Если это не число, возвращаем как строку
+                return value;
+            }
         }
     }
 }
