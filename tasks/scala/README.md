@@ -43,3 +43,48 @@
 - В это задании необходимо реализовать множество целых числе заданное как функцию `type Set = Int => Boolean`, данная функция отвечает на вопрос "содержится ли заданный элемент в множестве", выделяя его таким образом из множества целых чисел
 - Для выполнения задания необходимо представить свою реализацию функций, тело которых представлено как `???`
 - После выполнения задания, подумайте над тем, где все-таки хранятся элементы множества
+
+#### Scala - 3
+
+##### 3.1. N-Queens promblem
+
+Write a recursive function nQueens that returns all solutions to the N-Queens problem for a given board size N.
+
+```scala
+nQueens(4) // Output: List of solutions (position sets for queens on a 4x4 board)
+```
+
+##### 3.2. Flatten a Nested List
+
+Write a recursive function flatten that flattens a nested list into a single list:
+
+```
+flatten(List(List(1, 2), 3, List(4, List(5, 6))))  // Output: List(1, 2, 3, 4, 5, 6)
+flatten(List(1, List(2, List(3))))                // Output: List(1, 2, 3)
+```
+
+#### Scala - 4
+
+##### 4.1. Vector Operations (3D)
+
+Implement a Vector3D class using case classes to represent 3D vectors. Provide implementations for basic vector operations using functional programming principles:
+•	Addition: v1 + v2
+•	Substraction: v1 - v2
+•	Multiplication: v * const
+•	Scalar multiplication: v1 * v2
+•	Transpose
+
+```scala
+val v1 = Vector3D(1, 2, 3)
+val v2 = Vector3D(4, 5, 6)
+```
+##### 4.2. Map Function
+
+Write a recursive implementation of map for lists without using built-in library functions. The function signature should be:
+
+```scala
+def customMap[A, B](list: List[A], f: A => B): List[B]
+
+customMap(List(1, 2, 3), x => x * 2) // Output: List(2, 4, 6)
+```
+
