@@ -5,3 +5,5 @@ bin/
 .settings
 out/
 input/
+.idea
+build/
