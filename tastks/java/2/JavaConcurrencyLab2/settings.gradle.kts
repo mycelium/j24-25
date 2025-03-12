@@ -1,0 +1,2 @@
+rootProject.name = "JavaConcurrencyLab2"
+
