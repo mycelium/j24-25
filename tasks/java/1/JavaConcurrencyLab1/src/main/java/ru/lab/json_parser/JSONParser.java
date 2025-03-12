@@ -2,67 +2,11 @@ package ru.lab.json_parser;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.IntStream;
 
 
 public class JSONParser {
-
-    public static <T> T readJsonToObject(String json, T object) {
-        Map<String, Object> map = readJsonToMap(json);
-        Class<?> clazz = object.getClass();
-        Object newObject = fillClazzWithMap(map, clazz);
-        Field[] fields = newObject.getClass().getDeclaredFields();
-
-        for(Field field: fields){
-            try{
-                field.setAccessible(true);
-                field.set(object, field.get(newObject));
-            }catch (IllegalAccessException exc){
-                exc.printStackTrace();
-            }
-        }
-        return object;
-    }
-
-    private static <T> T fillObjectWithMap(Map<String, Object> map, T object){
-        try{
-            Class<?> clazz = object.getClass();
-            for (Field field : clazz.getDeclaredFields()) {
-                String fieldName = field.getName();
-                if (map.containsKey(fieldName)) {
-                    Class<?> fieldType = field.getType();
-                    Object value = map.get(fieldName);
-
-                    // Если значение является Map, рекурсивно преобразуем его в объект
-                    if (value instanceof Map) {
-                        value = fillObjectWithMap((Map<String, Object>) value, fieldType);
-                    }
-
-                    // Если значение является List, обрабатываем его элементы
-                    if (value instanceof List<?> list) {
-                        if (!list.isEmpty() && list.get(0) instanceof Map) {
-                            Class<?> listType = (Class<?>) ((java.lang.reflect.ParameterizedType) field.getGenericType())
-                                    .getActualTypeArguments()[0];
-                            List<Object> typedList = (List<Object>) list;
-                            typedList.replaceAll(o -> fillObjectWithMap((Map<String, Object>) o, listType));
-                        }
-                    }
-
-                    // Устанавливаем значение поля
-                    String setterName = "set" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
-                    Method setter = clazz.getMethod(setterName, fieldType);
-                    setter.invoke(object, value);
-                }
-            }
-
-            return object;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to convert map to object", e);
-        }
-    }
-
 
     private static <T> T fillClazzWithMap(Map<String, Object> map, Class<T> clazz){
         try{
@@ -106,6 +50,29 @@ public class JSONParser {
         throw new RuntimeException("Failed to convert map to object");
     }
 
+    /**
+     * Преобразует JSON-строку в объект указанного класса.
+     * <p>
+     * Метод парсит JSON-строку, преобразует её в {@link Map}, а затем заполняет поля объекта
+     * с использованием рефлексии. Поддерживаются вложенные объекты и массивы.
+     * </p>
+     * <p>
+     * Пример использования:
+     * <pre>
+     * {@code
+     * String json = "{\"name\":\"John\", \"age\":30}";
+     * Person person = JSONParser.readJsonToEntity(json, Person.class);
+     * System.out.println(person.getName()); // Output: John
+     * }
+     * </pre>
+     * </p>
+     *
+     * @param json  JSON-строка, которую необходимо преобразовать в объект.
+     * @param clazz Класс, объект которого необходимо создать и заполнить.
+     * @param <T>   Тип возвращаемого объекта.
+     * @return Объект типа {@code T}, заполненный данными из JSON-строки.
+     * @throws RuntimeException если произошла ошибка при преобразовании JSON в объект.
+     */
     public static <T> T readJsonToEntity(String json, Class<T> clazz) {
         try {
             return fillClazzWithMap(readJsonToMap(json), clazz);
@@ -114,6 +81,28 @@ public class JSONParser {
         }
     }
 
+    /**
+     * Преобразует JSON-строку в {@link Map<String, Object>}.
+     * <p>
+     * Метод парсит JSON-строку, представляющую объект, и возвращает её в виде {@link Map},
+     * где ключи — это имена полей, а значения — соответствующие значения из JSON.
+     * Поддерживаются вложенные объекты и массивы.
+     * </p>
+     * <p>
+     * Пример использования:
+     * <pre>
+     * {@code
+     * String json = "{\"name\":\"John\", \"age\":30}";
+     * Map<String, Object> map = JSONParser.readJsonToMap(json);
+     * System.out.println(map.get("name")); // Output: John
+     * }
+     * </pre>
+     * </p>
+     *
+     * @param json JSON-строка, которую необходимо преобразовать в {@link Map}.
+     * @return {@link Map<String, Object>}, содержащий данные из JSON-строки.
+     * @throws IllegalArgumentException если JSON-строка некорректна (например, не начинается с '{' или не заканчивается '}').
+     */
     public static Map<String, Object> readJsonToMap(String json){
         json = json.trim();
         if(json.startsWith("{") && json.endsWith("}")){
@@ -123,7 +112,7 @@ public class JSONParser {
         }
     }
 
-    private static Map<String, Object> parseObject(String json){
+    private static Map<String, Object> parseObject(String json) {
         Map<String, Object> map = new HashMap<>();
         StringBuilder keyBuilder = new StringBuilder();
         StringBuilder valueBuilder = new StringBuilder();
@@ -134,49 +123,82 @@ public class JSONParser {
 
         for (int i = 0; i < json.length(); i++) {
             char c = json.charAt(i);
+            inQuotes = updateInQuotes(c, prevChar, inQuotes);
+            depth = updateDepth(c, inQuotes, depth);
 
-            if (c == '"' && prevChar != '\\') {
-                inQuotes = !inQuotes;
-            }
-
-            if (!inQuotes) {
-                if (c == '{' || c == '[') {
-                    depth++;
-                } else if (c == '}' || c == ']') {
-                    depth--;
-                }
-            }
-
-            if (depth == 0 && !inQuotes && c == ':' && key == null) {
-                key = keyBuilder.toString().trim();
-                if (key.startsWith("\"") && key.endsWith("\"")) {
-                    key = key.substring(1, key.length() - 1);
-                }
-                keyBuilder.setLength(0);
+            if (isKeyValueSeparator(c, depth, inQuotes, key)) {
+                key = extractKey(keyBuilder);
                 continue;
             }
 
-            if (depth == 0 && !inQuotes && (c == ',' || i == json.length() - 1)) {
-                if (i == json.length() - 1) {
-                    valueBuilder.append(c);
-                }
-                String value = valueBuilder.toString().trim();
+            if (isValueEnd(c, depth, inQuotes, i, json.length(), key)) {
+                String value = extractValue(valueBuilder, c, i, json.length());
                 map.put(key, parseValue(value));
-                valueBuilder.setLength(0);
                 key = null;
                 continue;
             }
 
-            if (key == null) {
-                keyBuilder.append(c);
-            } else {
-                valueBuilder.append(c);
-            }
-
+            appendToBuilder(key, keyBuilder, valueBuilder, c);
             prevChar = c;
         }
 
+        if (depth != 0 || inQuotes) {
+            throw new IllegalArgumentException("Invalid JSON: Unbalanced brackets or unclosed string");
+        }
+
         return map;
+    }
+
+    private static boolean updateInQuotes(char c, char prevChar, boolean inQuotes) {
+        if (c == '"' && prevChar != '\\') {
+            return !inQuotes;
+        }
+        return inQuotes;
+    }
+
+    private static int updateDepth(char c, boolean inQuotes, int depth) {
+        if (!inQuotes) {
+            if (c == '{' || c == '[') {
+                return depth + 1;
+            } else if (c == '}' || c == ']') {
+                return depth - 1;
+            }
+        }
+        return depth;
+    }
+
+    private static boolean isKeyValueSeparator(char c, int depth, boolean inQuotes, String key) {
+        return depth == 0 && !inQuotes && c == ':' && key == null;
+    }
+
+    private static String extractKey(StringBuilder keyBuilder) {
+        String key = keyBuilder.toString().trim();
+        if (key.startsWith("\"") && key.endsWith("\"")) {
+            key = key.substring(1, key.length() - 1);
+        }
+        keyBuilder.setLength(0);
+        return key;
+    }
+
+    private static boolean isValueEnd(char c, int depth, boolean inQuotes, int index, int length, String key) {
+        return depth == 0 && !inQuotes && (c == ',' || index == length - 1) && key != null;
+    }
+
+    private static String extractValue(StringBuilder valueBuilder, char c, int index, int length) {
+        if (index == length - 1) {
+            valueBuilder.append(c);
+        }
+        String value = valueBuilder.toString().trim();
+        valueBuilder.setLength(0);
+        return value;
+    }
+
+    private static void appendToBuilder(String key, StringBuilder keyBuilder, StringBuilder valueBuilder, char c) {
+        if (key == null) {
+            keyBuilder.append(c);
+        } else {
+            valueBuilder.append(c);
+        }
     }
 
     private static Object parseValue(String value) {
@@ -213,26 +235,12 @@ public class JSONParser {
 
         for (int i = 0; i < json.length(); i++) {
             char c = json.charAt(i);
+            inQuotes = updateInQuotes(c, prevChar, inQuotes);
+            depth = updateDepth(c, inQuotes, depth);
 
-            if (c == '"' && prevChar != '\\') {
-                inQuotes = !inQuotes;
-            }
-
-            if (!inQuotes) {
-                if (c == '{' || c == '[') {
-                    depth++;
-                } else if (c == '}' || c == ']') {
-                    depth--;
-                }
-            }
-
-            if (depth == 0 && !inQuotes && (c == ',' || i == json.length() - 1)) {
-                if (i == json.length() - 1) {
-                    valueBuilder.append(c);
-                }
-                String value = valueBuilder.toString().trim();
+            if (isValueSeparator(c, depth, inQuotes, i, json.length())) {
+                String value = extractValue(valueBuilder, c, i, json.length());
                 list.add(parseValue(value));
-                valueBuilder.setLength(0);
                 continue;
             }
 
@@ -240,7 +248,15 @@ public class JSONParser {
             prevChar = c;
         }
 
+        if (depth != 0 || inQuotes) {
+            throw new IllegalArgumentException("Invalid JSON array: Unbalanced brackets or unclosed string");
+        }
+
         return list;
+    }
+
+    private static boolean isValueSeparator(char c, int depth, boolean inQuotes, int index, int length) {
+        return depth == 0 && !inQuotes && (c == ',' || index == length - 1);
     }
 
     private static String toJsonString(Map<String, Object> map) {
@@ -263,6 +279,27 @@ public class JSONParser {
         return jsonBuilder.toString();
     }
 
+    /**
+     * Преобразует объект в JSON-строку.
+     * <p>
+     * Метод рекурсивно обходит поля объекта и преобразует их в JSON-строку.
+     * Поддерживаются примитивные типы, строки, массивы, коллекции и вложенные объекты.
+     * </p>
+     * <p>
+     * Пример использования:
+     * <pre>
+     * {@code
+     * Person person = new Person("John", 30);
+     * String json = JSONParser.convertEntityToJSON(person);
+     * System.out.println(json); // Output: {"name":"John","age":30}
+     * }
+     * </pre>
+     * </p>
+     *
+     * @param object Объект, который необходимо преобразовать в JSON-строку.
+     * @param <T>    Тип объекта.
+     * @return JSON-строка, представляющая объект.
+     */
     public static <T> String convertEntityToJSON(T object) {
         if(object == null){
             return "null";

@@ -20,15 +20,6 @@ public class JSONParserTest {
                 List.of(new Category(2, "Example"))
             );
 
-    private final ProductCard testObjectForFilling = new ProductCard(
-            2,
-            "icecream yep",
-            "Vanilla Cone",
-            new Image("img/01.png", 4000, 200),
-            new Image("images/thumbnails/01.png", 200, 200),
-            List.of(new Category(5, "Example"))
-    );
-
     private final Map<String, Object> testMap = Map.of(
         "id", 1,
             "type", "icecream",
@@ -62,12 +53,5 @@ public class JSONParserTest {
     @Test
     public void parsingJSONToMap(){
         Assertions.assertEquals(JSONParser.readJsonToMap(JSON), testMap);
-    }
-
-    @Test
-    public void parsingJSONToObject(){
-        ProductCard filledObject = JSONParser.readJsonToObject(JSON, testObjectForFilling);
-        Assertions.assertFalse(testObject == testObjectForFilling); // проверка, что это тот же объект, с той же ссылкой
-        Assertions.assertEquals(JSONParser.readJsonToObject(JSON, filledObject), testObjectForFilling);
     }
 }
