@@ -1,5 +1,7 @@
 package main.java.ru.spbstu;
 
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -89,25 +91,19 @@ public class JsonParser {
     }
 
     private Object parseValue(String value) {
-        return Stream.of(value)
-                .map(String::trim)
-                .map(v -> {
-                    if (v.startsWith("\"") && v.endsWith("\"")) {
-                        return v.substring(1, v.length() - 1);
-                    } else if (v.startsWith("[") && v.endsWith("]")) {
-                        return parseArray(v);
-                    } else if (v.startsWith("{") && v.endsWith("}")) {
-                        return parseJson(v);
-                    } else if (v.equalsIgnoreCase("null")) {
-                        return null;
-                    } else if (v.equalsIgnoreCase("true") || v.equalsIgnoreCase("false")) {
-                        return Boolean.parseBoolean(v);
-                    } else {
-                        return parseNumber(v);
-                    }
-                })
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Invalid value: " + value));
+        String v = value.trim();
+        return switch (v) {
+            case String s when s.startsWith("\"") && s.endsWith("\"") ->
+                    s.substring(1, s.length() - 1);
+            case String s when s.startsWith("[") && s.endsWith("]") ->
+                    parseArray(s);
+            case String s when s.startsWith("{") && s.endsWith("}") ->
+                    parseJson(s);
+            case "null", "NULL", "Null" -> null;
+            case "true", "TRUE", "True" -> true;
+            case "false", "FALSE", "False" -> false;
+            default -> parseNumber(v);
+        };
     }
 
     private List<Object> parseArray(String array) {
