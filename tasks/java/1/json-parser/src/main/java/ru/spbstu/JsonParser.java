@@ -126,4 +126,43 @@ public class JsonParser {
             throw new IllegalArgumentException("Invalid number: " + value);
         }
     }
+
+    public <T> T fromJson(String json, Class<T> targetClass) {
+        Map<String, Object> map = fromJsonToMap(json);
+        return convertMapToObject(map, targetClass);
+    }
+
+    private <T> T convertMapToObject(Map<String, Object> map, Class<T> targetClass) {
+        try {
+            T instance = targetClass.getDeclaredConstructor().newInstance();
+            for (Field field : targetClass.getDeclaredFields()) {
+                field.setAccessible(true);
+                Object value = map.get(field.getName());
+                if (value == null) continue;
+
+                // Обработка вложенности
+                if (value instanceof Map) {
+                    value = convertMapToObject((Map<String, Object>) value, field.getType());
+                }
+
+                // Обработка массивов
+                if (value instanceof List<?> list && field.getType().isArray()) {
+                    value = convertListToArray(list, field.getType().getComponentType());
+                }
+
+                field.set(instance, value);
+            }
+            return instance;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to convert map to object", e);
+        }
+    }
+
+    private Object convertListToArray(List<?> list, Class<?> componentType) {
+        Object array = Array.newInstance(componentType, list.size());
+        for (int i = 0; i < list.size(); i++) {
+            Array.set(array, i, list.get(i));
+        }
+        return array;
+    }
 }

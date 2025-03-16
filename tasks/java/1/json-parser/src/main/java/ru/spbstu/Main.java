@@ -10,8 +10,11 @@ public class Main {
         String json = "{\"name\":\"John\",\"age\":22,\"isStudent\":null,\"hobbies\":[\"reading\",\"coding\"]}";
         String json2 = "{address:[1, 2, { nestedKey: [true, false] }, [3,4]],\"array\":[1,\"12\",3,14,15,61], \"bool\":false}";
 
-        Map<String, Object> map = parser.fromJsonToMap(json2);
-        System.out.println(map);
+        /*Map<String, Object> map = parser.fromJsonToMap(json2);
+        System.out.println(map);*/
+
+        User user = parser.fromJson(json, User.class);
+        System.out.println(user);
     }
 }
 
