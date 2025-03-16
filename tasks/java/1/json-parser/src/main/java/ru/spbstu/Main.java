@@ -46,19 +46,39 @@ class User {
         return name;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public Integer getAge() {
         return age;
+    }
+
+    public void setAge(Integer age) {
+        this.age = age;
     }
 
     public Boolean getIsStudent() {
         return isStudent;
     }
 
+    public void setIsStudent(Boolean isStudent) {
+        this.isStudent = isStudent;
+    }
+
     public String[] getHobbies() {
         return hobbies;
     }
 
+    public void setHobbies(String[] hobbies) {
+        this.hobbies = hobbies;
+    }
+
     public Set<String> getSkills() {
         return skills;
+    }
+
+    public void setSkills(Set<String> skills) {
+        this.skills = skills;
     }
 }
