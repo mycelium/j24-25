@@ -41,4 +41,24 @@ class User {
         return "User{name='" + name + "', age=" + age + ", isStudent=" + isStudent +
                 ", hobbies=" + Arrays.toString(hobbies) + ", skills=" + skills +  "}";
     }
+
+    public String getName() {
+        return name;
+    }
+
+    public Integer getAge() {
+        return age;
+    }
+
+    public Boolean getIsStudent() {
+        return isStudent;
+    }
+
+    public String[] getHobbies() {
+        return hobbies;
+    }
+
+    public Set<String> getSkills() {
+        return skills;
+    }
 }
