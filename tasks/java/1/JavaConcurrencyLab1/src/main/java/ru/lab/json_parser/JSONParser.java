@@ -1,5 +1,6 @@
 package ru.lab.json_parser;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.*;
@@ -18,8 +19,8 @@ public class JSONParser {
                     Class<?> fieldType = field.getType();
                     Object value = map.get(fieldName);
 
-                    // Если значение является Map, рекурсивно преобразуем его в объект
-                    if (value instanceof Map) {
+                    // Если значение является Map и поле не является Map, рекурсивно преобразуем его в объект
+                    if (value instanceof Map && !Map.class.isAssignableFrom(fieldType)) {
                         value = fillClazzWithMap((Map<String, Object>) value, fieldType);
                     }
 
@@ -30,6 +31,25 @@ public class JSONParser {
                                     .getActualTypeArguments()[0];
                             List<Object> typedList = (List<Object>) list;
                             typedList.replaceAll(o -> fillClazzWithMap((Map<String, Object>) o, listType));
+                        } else if (fieldType.isArray()){
+                            Class<?> componentType = list.isEmpty() ? Object.class : list.get(0).getClass();
+
+                            // Создаём массив нужного типа
+                            Object array = Array.newInstance(componentType, list.size());
+
+                            // Заполняем массив элементами из списка
+                            for (int i = 0; i < list.size(); i++) {
+                                Array.set(array, i, list.get(i));
+                            }
+                            value = array;
+                        }
+                        // Если fieldType является Iterable (например, HashSet, ArrayList и т.д.)
+                        else if (Iterable.class.isAssignableFrom(fieldType)) {
+                            // Создаём новый экземпляр Iterable (например, HashSet)
+                            Iterable<?> iterable = createIterableFromList(fieldType, list);
+
+                            // Присваиваем значение полю
+                            value = iterable;
                         }
                     }
 
@@ -49,6 +69,25 @@ public class JSONParser {
         }
         throw new RuntimeException("Failed to convert map to object");
     }
+
+
+    private static Iterable<?> createIterableFromList(Class<?> iterableType, List<?> list) throws Exception {
+        // Получаем конструктор по умолчанию
+        Constructor<?> constructor = iterableType.getDeclaredConstructor();
+
+        // Создаём новый экземпляр Iterable
+        Iterable<Object> iterable = (Iterable<Object>) constructor.newInstance();
+
+        // Добавляем все элементы из List в Iterable
+        if (iterable instanceof Collection) {
+            ((Collection<Object>) iterable).addAll((List<Object>) list);
+        } else {
+            throw new UnsupportedOperationException("Unsupported Iterable type: " + iterableType.getName());
+        }
+
+        return iterable;
+    }
+
 
     /**
      * Преобразует JSON-строку в объект указанного класса.
