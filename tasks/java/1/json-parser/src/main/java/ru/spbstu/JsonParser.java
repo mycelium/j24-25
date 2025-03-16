@@ -151,9 +151,9 @@ public class JsonParser {
                     value = convertMapToObject((Map<String, Object>) value, field.getType());
                 }
 
-                // Обработка массивов
-                if (value instanceof List<?> list && field.getType().isArray()) {
-                    value = convertListToArray(list, field.getType().getComponentType());
+                // Обработка коллекций и массивов
+                if (value instanceof List<?> list) {
+                    value = convertListToFieldType(list, field);
                 }
 
                 field.set(instance, value);
@@ -164,6 +164,20 @@ public class JsonParser {
         }
     }
 
+    private Object convertListToFieldType(List<?> list, Field field) {
+        Class<?> fieldType = field.getType();
+
+        if (fieldType.isArray()) {
+            return convertListToArray(list, fieldType.getComponentType());
+        }
+
+        if (Collection.class.isAssignableFrom(fieldType)) {
+            return convertListToCollection(list, fieldType);
+        }
+
+        throw new IllegalArgumentException("Unsupported field type: " + fieldType);
+    }
+
     private Object convertListToArray(List<?> list, Class<?> componentType) {
         Object array = Array.newInstance(componentType, list.size());
         for (int i = 0; i < list.size(); i++) {
@@ -172,6 +186,36 @@ public class JsonParser {
         return array;
     }
 
+    private Object convertListToCollection(List<?> list, Class<?> collectionType) {
+        try {
+            Collection<Object> collection = createCollectionInstance(collectionType);
+            collection.addAll(list);
+            return collection;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create collection", e);
+        }
+    }
+
+
+    private Collection<Object> createCollectionInstance(Class<?> collectionType) {
+        if (collectionType.isInterface()) {
+            // Для интерфейсов стандартные реализации
+            if (Set.class.isAssignableFrom(collectionType)) {
+                return new HashSet<>();
+            } else if (List.class.isAssignableFrom(collectionType)) {
+                return new ArrayList<>();
+            } else {
+                throw new IllegalArgumentException("Unsupported collection interface: " + collectionType);
+            }
+        } else {
+            // Для конкретных классов создаем экземпляр
+            try {
+                return (Collection<Object>) collectionType.getDeclaredConstructor().newInstance();
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to create collection instance: " + collectionType, e);
+            }
+        }
+    }
 
     private String convertObjectToJson(Object object) {
         return switch (object) {
