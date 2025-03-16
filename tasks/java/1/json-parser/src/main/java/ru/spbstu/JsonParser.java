@@ -144,7 +144,7 @@ public class JsonParser {
             for (Field field : targetClass.getDeclaredFields()) {
                 field.setAccessible(true);
                 Object value = map.get(field.getName());
-                if (value == null) continue;
+                //if (value == null) continue;
 
                 // Обработка вложенности
                 if (value instanceof Map) {
