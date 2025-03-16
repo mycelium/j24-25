@@ -1,21 +1,20 @@
-package main.java.ru.spbstu;
+package ru.spbstu;
 
 import java.util.*;
 
 public class Main {
     public static void main(String[] args) {
-        JsonParser parser = new JsonParser();
 
         String json = "{\"skills\":[\"Teamwork\",\"Leadership\",\"Initiative\"], \"name\":\"John\",\"age\":22,\"isStudent\":null,\"hobbies\":[\"reading\",\"coding\"]}";
         // String json2 = "{address:[1, 2, { nestedKey: [true, false] }, [3,4]],\"array\":[1,\"12\",3,14,15,61], \"bool\":false}";
 
-        Map<String, Object> map = parser.fromJsonToMap(json);
+        Map<String, Object> map = JsonParser.fromJsonToMap(json);
         System.out.println(map);
 
-        User user = parser.fromJsonToClass(json, User.class);
+        User user = JsonParser.fromJsonToClass(json, User.class);
         System.out.println(user);
 
-        System.out.println(parser.fromObjToJson(user));
+        System.out.println(JsonParser.fromObjToJson(user));
 
         var user2 = new User();
         System.out.println(user2);

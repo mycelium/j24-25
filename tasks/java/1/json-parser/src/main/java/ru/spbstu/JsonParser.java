@@ -1,4 +1,4 @@
-package main.java.ru.spbstu;
+package ru.spbstu;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -8,21 +8,21 @@ import java.util.stream.Stream;
 
 public class JsonParser {
 
-    public Map<String, Object> fromJsonToMap(String json) {
+    public static Map<String, Object> fromJsonToMap(String json) {
         return parseJson(json);
     }
 
-    public <T> T fromJsonToClass(String json, Class<T> targetClass) {
+    public static <T> T fromJsonToClass(String json, Class<T> targetClass) {
         Map<String, Object> map = fromJsonToMap(json);
         return convertMapToObject(map, targetClass);
     }
 
-    public String fromObjToJson(Object object) {
+    public static String fromObjToJson(Object object) {
         return convertObjectToJson(object);
     }
 
 
-    private Map<String, Object> parseJson(String json) {
+    private static Map<String, Object> parseJson(String json) {
         json = json.trim();
         if (!json.startsWith("{") || !json.endsWith("}")) {
             throw new IllegalArgumentException("Invalid JSON: must start with { and end with }");
@@ -41,7 +41,7 @@ public class JsonParser {
         return map;
     }
 
-    private List<String> splitJsonEntries(String json) {
+    private static List<String> splitJsonEntries(String json) {
         List<String> entries = new ArrayList<>();
         int braceCount = 0;
         int bracketCount = 0;
@@ -68,7 +68,7 @@ public class JsonParser {
         return entries;
     }
 
-    private int findColonIndex(String pair) {
+    private static int findColonIndex(String pair) {
         int braceCount = 0;
         int bracketCount = 0;
 
@@ -87,7 +87,7 @@ public class JsonParser {
         throw new IllegalArgumentException("Invalid key-value pair: " + pair);
     }
 
-    private String parseKey(String keyPart) {
+    private static String parseKey(String keyPart) {
         return Stream.of(keyPart)
                 .map(String::trim)
                 .map(k -> {
@@ -100,7 +100,7 @@ public class JsonParser {
                 .orElseThrow(() -> new IllegalArgumentException("Invalid key: " + keyPart));
     }
 
-    private Object parseValue(String value) {
+    private static Object parseValue(String value) {
         String v = value.trim();
         return switch (v) {
             case String s when s.startsWith("\"") && s.endsWith("\"") ->
@@ -116,17 +116,17 @@ public class JsonParser {
         };
     }
 
-    private List<Object> parseArray(String array) {
+    private static List<Object> parseArray(String array) {
         String content = array.substring(1, array.length() - 1).trim();
         if (content.isEmpty()) return Collections.emptyList();
 
         List<String> elements = splitJsonEntries(content);
         return elements.stream()
-                .map(this::parseValue)
+                .map(JsonParser::parseValue)
                 .collect(Collectors.toList());
     }
 
-    private Object parseNumber(String value) {
+    private static Object parseNumber(String value) {
         try {
             if (value.contains(".")) {
                 return Double.parseDouble(value);
@@ -138,7 +138,7 @@ public class JsonParser {
     }
 
 
-    private <T> T convertMapToObject(Map<String, Object> map, Class<T> targetClass) {
+    private static <T> T convertMapToObject(Map<String, Object> map, Class<T> targetClass) {
         try {
             T instance = targetClass.getDeclaredConstructor().newInstance();
             for (Field field : targetClass.getDeclaredFields()) {
@@ -164,7 +164,7 @@ public class JsonParser {
         }
     }
 
-    private Object convertListToFieldType(List<?> list, Field field) {
+    private static Object convertListToFieldType(List<?> list, Field field) {
         Class<?> fieldType = field.getType();
 
         if (fieldType.isArray()) {
@@ -178,7 +178,7 @@ public class JsonParser {
         throw new IllegalArgumentException("Unsupported field type: " + fieldType);
     }
 
-    private Object convertListToArray(List<?> list, Class<?> componentType) {
+    private static Object convertListToArray(List<?> list, Class<?> componentType) {
         Object array = Array.newInstance(componentType, list.size());
         for (int i = 0; i < list.size(); i++) {
             Array.set(array, i, list.get(i));
@@ -186,7 +186,7 @@ public class JsonParser {
         return array;
     }
 
-    private Object convertListToCollection(List<?> list, Class<?> collectionType) {
+    private static Object convertListToCollection(List<?> list, Class<?> collectionType) {
         try {
             Collection<Object> collection = createCollectionInstance(collectionType);
             collection.addAll(list);
@@ -197,7 +197,7 @@ public class JsonParser {
     }
 
 
-    private Collection<Object> createCollectionInstance(Class<?> collectionType) {
+    private static Collection<Object> createCollectionInstance(Class<?> collectionType) {
         if (collectionType.isInterface()) {
             // Для интерфейсов стандартные реализации
             if (Set.class.isAssignableFrom(collectionType)) {
@@ -217,7 +217,7 @@ public class JsonParser {
         }
     }
 
-    private String convertObjectToJson(Object object) {
+    private static String convertObjectToJson(Object object) {
         return switch (object) {
             case null -> "null";
             case String str -> "\"" + escapeJsonString(str) + "\"";
@@ -229,7 +229,7 @@ public class JsonParser {
         };
     }
 
-    private String serializeObject(Object object) {
+    private static String serializeObject(Object object) {
         Field[] fields = object.getClass().getDeclaredFields();
         Arrays.stream(fields).forEach(field -> field.setAccessible(true));
 
@@ -246,24 +246,24 @@ public class JsonParser {
                 .collect(Collectors.joining(",", "{", "}"));
     }
 
-    private String serializeCollection(Collection<?> collection) {
+    private static String serializeCollection(Collection<?> collection) {
         return collection.stream()
-                .map(this::convertObjectToJson)
+                .map(JsonParser::convertObjectToJson)
                 .collect(Collectors.joining(",", "[", "]"));
     }
 
-    private String serializeArray(Object array) {
+    private static String serializeArray(Object array) {
         List<Object> list = Arrays.asList((Object[]) array);
         return serializeCollection(list);
     }
 
-    /*private String serializeArray(Object array) {
+    /*private static String serializeArray(Object array) {
         return Arrays.stream((Object[]) array)
-                .map(this::convertObjectToJson)
+                .map(JsonParser::convertObjectToJson)
                 .collect(Collectors.joining(",", "[", "]"));
     }*/
 
-    private String escapeJsonString(String str) {
+    private static String escapeJsonString(String str) {
         if (str == null) {
             return null;
         }
