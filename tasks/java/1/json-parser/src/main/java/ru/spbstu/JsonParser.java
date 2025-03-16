@@ -12,6 +12,16 @@ public class JsonParser {
         return parseJson(json);
     }
 
+    public <T> T fromJsonToClass(String json, Class<T> targetClass) {
+        Map<String, Object> map = fromJsonToMap(json);
+        return convertMapToObject(map, targetClass);
+    }
+
+    public String fromObjToJson(Object object) {
+        return convertObjectToJson(object);
+    }
+
+
     private Map<String, Object> parseJson(String json) {
         json = json.trim();
         if (!json.startsWith("{") || !json.endsWith("}")) {
@@ -127,10 +137,6 @@ public class JsonParser {
         }
     }
 
-    public <T> T fromJson(String json, Class<T> targetClass) {
-        Map<String, Object> map = fromJsonToMap(json);
-        return convertMapToObject(map, targetClass);
-    }
 
     private <T> T convertMapToObject(Map<String, Object> map, Class<T> targetClass) {
         try {
@@ -165,4 +171,67 @@ public class JsonParser {
         }
         return array;
     }
+
+
+    private String convertObjectToJson(Object object) {
+        if (object == null) {
+            return "null";
+        }
+
+        if (object instanceof String) {
+            return "\"" + escapeJsonString((String) object) + "\"";
+        }
+
+        if (object instanceof Number || object instanceof Boolean) {
+            return object.toString();
+        }
+
+        if (object instanceof Collection) {
+            return serializeCollection((Collection<?>) object);
+        }
+
+        if (object.getClass().isArray()) {
+            return serializeArray(object);
+        }
+
+        return serializeObject(object);
+    }
+
+    private String serializeObject(Object object) {
+        return Arrays.stream(object.getClass().getDeclaredFields())
+                .peek(field -> field.setAccessible(true))
+                .map(field -> {
+                    try {
+                        String key = field.getName();
+                        Object value = field.get(object);
+                        return "\"" + key + "\":" + convertObjectToJson(value);
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException("Failed to serialize object", e);
+                    }
+                })
+                .collect(Collectors.joining(",", "{", "}"));
+    }
+
+    private String serializeCollection(Collection<?> collection) {
+        return collection.stream()
+                .map(this::convertObjectToJson)
+                .collect(Collectors.joining(",", "[", "]"));
+    }
+
+    private String serializeArray(Object array) {
+        return Arrays.stream((Object[]) array)
+                .map(this::convertObjectToJson)
+                .collect(Collectors.joining(",", "[", "]"));
+    }
+
+    private String escapeJsonString(String str) {
+        return str.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\b", "\\b")
+                .replace("\f", "\\f")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+    }
+
 }
