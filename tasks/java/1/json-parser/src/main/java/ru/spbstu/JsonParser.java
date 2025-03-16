@@ -174,32 +174,22 @@ public class JsonParser {
 
 
     private String convertObjectToJson(Object object) {
-        if (object == null) {
-            return "null";
-        }
-
-        if (object instanceof String) {
-            return "\"" + escapeJsonString((String) object) + "\"";
-        }
-
-        if (object instanceof Number || object instanceof Boolean) {
-            return object.toString();
-        }
-
-        if (object instanceof Collection) {
-            return serializeCollection((Collection<?>) object);
-        }
-
-        if (object.getClass().isArray()) {
-            return serializeArray(object);
-        }
-
-        return serializeObject(object);
+        return switch (object) {
+            case null -> "null";
+            case String str -> "\"" + escapeJsonString(str) + "\"";
+            case Number num -> num.toString();
+            case Boolean bool -> bool.toString();
+            case Collection<?> collection -> serializeCollection(collection);
+            case Object array when array.getClass().isArray() -> serializeArray(array);
+            default -> serializeObject(object);
+        };
     }
 
     private String serializeObject(Object object) {
-        return Arrays.stream(object.getClass().getDeclaredFields())
-                .peek(field -> field.setAccessible(true))
+        Field[] fields = object.getClass().getDeclaredFields();
+        Arrays.stream(fields).forEach(field -> field.setAccessible(true));
+
+        return Arrays.stream(fields)
                 .map(field -> {
                     try {
                         String key = field.getName();
@@ -219,19 +209,35 @@ public class JsonParser {
     }
 
     private String serializeArray(Object array) {
+        List<Object> list = Arrays.asList((Object[]) array);
+        return serializeCollection(list);
+    }
+
+    /*private String serializeArray(Object array) {
         return Arrays.stream((Object[]) array)
                 .map(this::convertObjectToJson)
                 .collect(Collectors.joining(",", "[", "]"));
-    }
+    }*/
 
     private String escapeJsonString(String str) {
-        return str.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\b", "\\b")
-                .replace("\f", "\\f")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
+        if (str == null) {
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (char c : str.toCharArray()) {
+            switch (c) {
+                case '\\' -> sb.append("\\\\");
+                case '\"' -> sb.append("\\\"");
+                case '\b' -> sb.append("\\b");
+                case '\f' -> sb.append("\\f");
+                case '\n' -> sb.append("\\n");
+                case '\r' -> sb.append("\\r");
+                case '\t' -> sb.append("\\t");
+                default -> sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
 }
