@@ -376,7 +376,7 @@ public class HTTPServer {
      *
      * @param mapper The mapper.
      */
-    private void setBodyMapper(ObjectMapper mapper){
+    public void setBodyMapper(ObjectMapper mapper){
         this.objectMapper = mapper;
     }
 }
