@@ -4,7 +4,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class JsonParser {
 
@@ -88,16 +87,11 @@ public class JsonParser {
     }
 
     private static String parseKey(String keyPart) {
-        return Stream.of(keyPart)
-                .map(String::trim)
-                .map(k -> {
-                    if (k.startsWith("\"") && k.endsWith("\"")) {
-                        return k.substring(1, k.length() - 1);
-                    }
-                    return k;
-                })
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Invalid key: " + keyPart));
+        keyPart = keyPart.trim();
+        if (keyPart.startsWith("\"") && keyPart.endsWith("\"")) {
+            return keyPart.substring(1, keyPart.length() - 1);
+        }
+        return keyPart;
     }
 
     private static Object parseValue(String value) {
