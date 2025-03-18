@@ -166,7 +166,7 @@ public class Main_JSON_Parser {
 
     public static void main(String[] args) throws Exception {
         minUI ui = new minUI();
-        String json = "{\"mark\":\"Volvo\",\"model\":X90,\"v\":12, \"crashed_Painted\": false}";
+        String json = "{\"mark\":\"Volvo\",\"model\":\"X90\",\"v\":12, \"crashed_Painted\": false}";
         Map<String, Object> map = JSONIntoMAP(json);
 
         ui.start("Парсинг мапы");
@@ -193,6 +193,7 @@ public class Main_JSON_Parser {
         try {
             FileWriter jsonW = new FileWriter("dealWithIt.json", false);
             jsonW.write(toJSON(futureCar));
+            jsonW.close();
             System.out.println(": \tЗаписано!");
             ui.end("Запись в файл");
         } catch (IOException e) {
