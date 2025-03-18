@@ -9,3 +9,8 @@ out/
 .metals
 .scala-build
 .vscode
+input/
+.idea
+build/
+images/
+users.db
