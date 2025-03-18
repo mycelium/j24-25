@@ -82,35 +82,111 @@ public class Main_JSON_Parser {
 
     private static int checkBrace1(String json) {
         int count = 0;
+        boolean inStr = false;
         for (int i = 0; i < json.length(); i++) {
-            if (json.charAt(i) == '{') count++;
-            if (json.charAt(i) == '}') count--;
-            if (count == 0) return i;
+            char c = json.charAt(i);
+            if (c == '"' && (i == 0 || json.charAt(i - 1) != '\\')) {
+                inStr = !inStr;
+            }
+            if (!inStr) {
+                if (c == '{') count++;
+                if (c == '}') count--;
+                if (count == 0)
+                    return i;
+            }
         }
-        throw new IllegalArgumentException("Забыли закрыть скобки!");
+        throw new IllegalArgumentException("Забыли закрыть скобки типа {}");
     }
 
     private static int checkBrace2(String json) {
         int count = 0;
+        boolean inStr = false;
         for (int i = 0; i < json.length(); i++) {
-            if (json.charAt(i) == '[') count++;
-            if (json.charAt(i) == ']') count--;
-            if (count == 0) return i;
+            char c = json.charAt(i);
+            if (c == '"' && (i == 0 || json.charAt(i - 1) != '\\')) {
+                inStr = !inStr;
+            }
+            if (!inStr) {
+                if (c == '[') count++;
+                if (c == ']') count--;
+                if (count == 0)
+                    return i;
+            }
         }
-        throw new IllegalArgumentException("Забыли закрыть скобки!");
+        throw new IllegalArgumentException("Забыли закрыть скобки типа []");
+    }
+
+    private static Object parseJSONValue(String json) {
+        json = json.trim();
+        if (json.isEmpty()) return null;
+        if (json.startsWith("\"")) {
+            StringBuilder sb = new StringBuilder();
+            boolean escape = false;
+            for (int i = 1; i < json.length(); i++) {
+                char c = json.charAt(i);
+                if (escape) {
+                    sb.append(c);
+                    escape = false;
+                } else if (c == '\\') {
+                    escape = true;
+                } else if (c == '"') {
+                    return sb.toString();
+                } else {
+                    sb.append(c);
+                }
+            }
+            return sb.toString();
+        } else if (json.startsWith("{")) {
+            int endIndex = checkBrace1(json);
+            return JSONIntoMAP(json.substring(0, endIndex + 1));
+        } else if (json.startsWith("[")) {
+            int endIndex = checkBrace2(json);
+            return parsingJSON_Array(json.substring(0, endIndex + 1));
+        } else {
+            return parsePrimWords(json);
+        }
     }
 
     private static List<Object> parsingJSON_Array(String json) {
         json = json.substring(1, json.length() - 1).trim();
         List<Object> list = new ArrayList<>();
-        while (!json.isEmpty()) {
-            int endIndex = json.indexOf(",");
-            if (endIndex == -1) endIndex = json.length();
-            list.add(parsePrimWords(json.substring(0, endIndex).trim()));
-            json = json.substring(endIndex).trim();
-            if (json.startsWith(",")) {
-                json = json.substring(1).trim();
+        if (!json.startsWith("[") || !json.endsWith("]")) {
+            throw new IllegalArgumentException("Неправильный формат JSON массива");
+        }
+        String inner = json.substring(1, json.length() - 1).trim();
+        if (inner.isEmpty()) {
+            return list;
+        }
+        int start = 0;
+        int len = inner.length();
+        int braceCount = 0;
+        int bracketCount = 0;
+        boolean inString = false;
+        for (int i = 0; i < len; i++) {
+            char c = inner.charAt(i);
+            if (c == '"' && (i == 0 || inner.charAt(i - 1) != '\\')) {
+                inString = !inString;
+            } else if (!inString) {
+                if (c == '{') {
+                    braceCount++;
+                } else if (c == '}') {
+                    braceCount--;
+                } else if (c == '[') {
+                    bracketCount++;
+                } else if (c == ']') {
+                    bracketCount--;
+                } else if (c == ',' && braceCount == 0 && bracketCount == 0) {
+                    String elementStr = inner.substring(start, i).trim();
+                    if (!elementStr.isEmpty()) {
+                        list.add(parseJSONValue(elementStr));
+                    }
+                    start = i + 1;
+                }
             }
+        }
+        String elementStr = inner.substring(start).trim();
+        if (!elementStr.isEmpty()) {
+            list.add(parseJSONValue(elementStr));
         }
         return list;
     }
@@ -136,6 +212,15 @@ public class Main_JSON_Parser {
         for (Field field : tempObj.getDeclaredFields()) {
             field.setAccessible(true);
             Object value = map.get(field.getName());
+            if (value instanceof List && field.getType().isArray()) {
+                List<?> list = (List<?>) value;
+                Class<?> compType = field.getType().getComponentType();
+                Object array = Array.newInstance(compType, list.size());
+                for (int i = 0; i < list.size(); i++) {
+                    Array.set(array, i, list.get(i));
+                }
+                value = array;
+            }
             field.set(obj, value);
         }
         return obj;
@@ -159,8 +244,28 @@ public class Main_JSON_Parser {
 
     private static String Values(Object value) throws IllegalAccessException {
         if (value == null) return "null";
+        if (value.getClass().isArray()){
+            StringBuilder sb = new StringBuilder("[");
+            int length = Array.getLength(value);
+            for (int i = 0; i < length; i++){
+                Object elem = Array.get(value, i);
+                sb.append(Values(elem)).append(",");
+            }
+            if(sb.charAt(sb.length()-1)==',') sb.deleteCharAt(sb.length()-1);
+            sb.append("]");
+            return sb.toString();
+        }
+        if (value instanceof Collection){
+            StringBuilder sb = new StringBuilder("[");
+            for (Object elem : (Collection<?>)value){
+                sb.append(Values(elem)).append(",");
+            }
+            if(sb.charAt(sb.length()-1)==',') sb.deleteCharAt(sb.length()-1);
+            sb.append("]");
+            return sb.toString();
+        }
         if (value instanceof String) return "\"" + value + "\"";
-        if (value instanceof Number || value instanceof Boolean) return value.toString();
+        if (value instanceof  Number || value instanceof Boolean) return value.toString();
         return toJSON(value);
     }
 
