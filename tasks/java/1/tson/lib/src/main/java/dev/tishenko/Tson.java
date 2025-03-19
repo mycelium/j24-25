@@ -12,12 +12,27 @@ public class Tson {
             '\r', "\\r",
             '\t', "\\t");
 
-    private String characterToJson(Character c) {
+    private String escapeCharacter(Character c) {
         if (SPECIAL_CHARACTERS.containsKey(c)) {
-            return "\"" + SPECIAL_CHARACTERS.get(c) + "\"";
+            return SPECIAL_CHARACTERS.get(c);
+        }
+        return c.toString();
+    }
+
+    private String characterToJson(Character c) {
+        return "\"" + escapeCharacter(c) + "\"";
+    }
+
+    private String stringToJson(String s) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\"");
+
+        for (Character c : s.toCharArray()) {
+            sb.append(escapeCharacter(c));
         }
 
-        return "\"" + c + "\"";
+        sb.append("\"");
+        return sb.toString();
     }
 
     public String toJson(Object obj) {
@@ -27,6 +42,10 @@ public class Tson {
 
         if (obj instanceof Character) {
             return characterToJson((Character) obj);
+        }
+
+        if (obj instanceof String) {
+            return stringToJson((String) obj);
         }
 
         return obj.toString();
