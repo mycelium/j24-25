@@ -3,7 +3,7 @@
  */
 package dev.tishenko;
 
-public class Library {
+public class Tson {
     public boolean someLibraryMethod() {
         return true;
     }
