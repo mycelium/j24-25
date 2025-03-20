@@ -26,4 +26,13 @@ class TsonTest {
         assertEquals("\"\\r\"", tson.toJson("\r")); // Carriage return \r
         assertEquals("\"\\t\"", tson.toJson("\t")); // Horizontal tab \t
     }
+
+    @Test
+    void stringArrayToJson() {
+        Tson tson = new Tson();
+
+        assertEquals("[]", tson.toJson(new String[] {}));
+        assertEquals("[\"one\",\"two\",\"three\",null]", tson.toJson(new String[] { "one", "two", "three", null }));
+        assertEquals("[\"\",\" \"]", tson.toJson(new String[] { "", " " }));
+    }
 }
