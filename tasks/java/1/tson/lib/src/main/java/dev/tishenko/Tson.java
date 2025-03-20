@@ -3,6 +3,7 @@ package dev.tishenko;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.Collection;
 import java.util.Map;
 import java.util.StringJoiner;
 
@@ -80,6 +81,16 @@ public class Tson {
         return sj.toString();
     }
 
+    private String collectionToJson(Collection<?> collection) {
+        StringJoiner sj = new StringJoiner(",", "[", "]");
+
+        for (Object obj : collection) {
+            sj.add(toJson(obj));
+        }
+
+        return sj.toString();
+    }
+
     public String toJson(Object obj) {
         if (obj == null) {
             return "null";
@@ -95,6 +106,10 @@ public class Tson {
 
         if (obj instanceof Number || obj instanceof Boolean) {
             return obj.toString();
+        }
+
+        if (obj instanceof Collection) {
+            return collectionToJson((Collection<?>) obj);
         }
 
         if (obj.getClass().isArray()) {
