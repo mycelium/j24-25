@@ -36,6 +36,7 @@ class ObjectsToJsonTest {
         assertEquals("[\"\",\" \"]", tson.toJson(new String[] { "", " " }));
     }
 
+    @SuppressWarnings("unused")
     static class WithBagOfPrimitives {
         private byte byteValue = 100;
         private short shortValue = 1000;
@@ -63,6 +64,7 @@ class ObjectsToJsonTest {
         assertEquals(expectedJson, tson.toJson(new WithBagOfPrimitives()));
     }
 
+    @SuppressWarnings("unused")
     static class WithBagOfTransientPrimitives {
         private byte byteValue = 100;
         private transient short shortValue = 1000;
@@ -86,6 +88,7 @@ class ObjectsToJsonTest {
         assertEquals(expectedJson, tson.toJson(new WithBagOfTransientPrimitives()));
     }
 
+    @SuppressWarnings("unused")
     static class WithNestedObject {
         private String name = "OuterObject";
         private Nested nested = new Nested();
@@ -104,6 +107,7 @@ class ObjectsToJsonTest {
         assertEquals(expectedJson, tson.toJson(new WithNestedObject()));
     }
 
+    @SuppressWarnings("unused")
     static class WithNestedArrayOfObjects {
         private Nested[] nestedArray = { new Nested(1), new Nested(2), new Nested(3) };
 
@@ -125,6 +129,7 @@ class ObjectsToJsonTest {
         assertEquals(expectedJson, tson.toJson(new WithNestedArrayOfObjects()));
     }
 
+    @SuppressWarnings("unused")
     static class WithNullField {
         private String name = "OuterObject";
         private Object nullField = null;
@@ -140,6 +145,7 @@ class ObjectsToJsonTest {
         assertEquals(expectedJson, tson.toJson(new WithNullField()));
     }
 
+    @SuppressWarnings("unused")
     static class WithTransientNestedObject {
         private String name = "OuterObject";
         private transient Nested nested = new Nested();
@@ -158,6 +164,7 @@ class ObjectsToJsonTest {
         assertEquals(expectedJson, tson.toJson(new WithTransientNestedObject()));
     }
 
+    @SuppressWarnings("unused")
     static class WithThreeLevelsOfNested {
         private boolean flag = true;
         private Level2 level2 = new Level2();
@@ -183,6 +190,7 @@ class ObjectsToJsonTest {
         assertEquals(expectedJson, tson.toJson(new WithThreeLevelsOfNested()));
     }
 
+    @SuppressWarnings("unused")
     static class WithDifferentAccessModifiers {
         public int publicValue = 10;
         private String privateValue = "private";
@@ -202,6 +210,7 @@ class ObjectsToJsonTest {
         assertEquals(expectedJson, tson.toJson(new WithDifferentAccessModifiers()));
     }
 
+    @SuppressWarnings("unused")
     static class WithMethods {
         private int id = 123;
         private String name = "Test";
@@ -228,6 +237,7 @@ class ObjectsToJsonTest {
         assertEquals(expectedJson, tson.toJson(new WithMethods()));
     }
 
+    @SuppressWarnings("unused")
     static class WithStaticFields {
         private static int privateStaticValue = 42;
         public static int publicStaticValue = 42;
@@ -242,6 +252,7 @@ class ObjectsToJsonTest {
         assertEquals("{\"value\":42}", tson.toJson(new WithStaticFields()));
     }
 
+    @SuppressWarnings("unused")
     static class WithNestedNonStaticClass {
         private String name = "OuterObject";
         private Nested nested = new Nested();
@@ -260,6 +271,7 @@ class ObjectsToJsonTest {
         assertEquals(expectedJson, tson.toJson(new WithNestedNonStaticClass()));
     }
 
+    @SuppressWarnings("unused")
     class NonStaticMemberClass {
         private int value = 42;
     }
@@ -275,6 +287,7 @@ class ObjectsToJsonTest {
     void localClassObjectToJson() {
         Tson tson = new Tson();
 
+        @SuppressWarnings("unused")
         class Local {
             private int value = 42;
         }
@@ -286,6 +299,7 @@ class ObjectsToJsonTest {
     void anonimousClassObjectToJson() {
         Tson tson = new Tson();
 
+        @SuppressWarnings("unused")
         Object anonymousObject = new Object() {
             private int id = 1;
             private String name = "Anonymous";
@@ -294,6 +308,7 @@ class ObjectsToJsonTest {
         assertEquals("null", tson.toJson(anonymousObject));
     }
 
+    @SuppressWarnings("unused")
     static class ArrayElement {
         private String name = "Element";
         private int id;
