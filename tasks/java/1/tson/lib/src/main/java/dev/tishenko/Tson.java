@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.StringJoiner;
 
 public class Tson {
-    static final Map<Character, String> SPECIAL_CHARACTERS = Map.of(
+    private static final Map<Character, String> SPECIAL_CHARACTERS_TO_JSON = Map.of(
             '"', "\\\"",
             '\\', "\\\\",
             '\b', "\\b",
@@ -17,9 +17,18 @@ public class Tson {
             '\r', "\\r",
             '\t', "\\t");
 
+    private static final Map<String, Character> SPECIAL_CHARACTERS_FROM_JSON = Map.of(
+            "\\\"", '"',
+            "\\\\", '\\',
+            "\\b", '\b',
+            "\\f", '\f',
+            "\\n", '\n',
+            "\\r", '\r',
+            "\\t", '\t');
+
     private String escapeCharacter(Character c) {
-        if (SPECIAL_CHARACTERS.containsKey(c)) {
-            return SPECIAL_CHARACTERS.get(c);
+        if (SPECIAL_CHARACTERS_TO_JSON.containsKey(c)) {
+            return SPECIAL_CHARACTERS_TO_JSON.get(c);
         }
         return c.toString();
     }
@@ -155,5 +164,75 @@ public class Tson {
         }
 
         return objectToJson(obj);
+    }
+
+    private boolean isPrimitiveOrWrapper(Class<?> clazz) {
+        return clazz.isPrimitive() ||
+                clazz == Byte.class ||
+                clazz == Short.class ||
+                clazz == Integer.class ||
+                clazz == Long.class ||
+                clazz == Float.class ||
+                clazz == Double.class ||
+                clazz == Boolean.class ||
+                clazz == Character.class;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T primitivesFromJson(String json, Class<T> classOfT) throws JsonParseException {
+        try {
+            return (T) switch (classOfT.getSimpleName()) {
+                case "byte", "Byte" -> Byte.valueOf(json.trim());
+                case "short", "Short" -> Short.valueOf(json.trim());
+                case "int", "Integer" -> Integer.valueOf(json.trim());
+                case "long", "Long" -> Long.valueOf(json.trim());
+                case "float", "Float" -> Float.valueOf(json.trim());
+                case "double", "Double" -> Double.valueOf(json.trim());
+                case "boolean", "Boolean" -> Boolean.valueOf(json.trim());
+                case "char", "Character" -> characterFromJson(json);
+                default -> throw new JsonParseException("Unsupported primitive type: " + classOfT.getName());
+            };
+        } catch (NumberFormatException e) {
+            throw new JsonParseException("Failed to parse JSON: " + json, e);
+        }
+    }
+
+    private Character characterFromJson(String json) throws JsonParseException {
+        if (json.length() >= 2 && json.startsWith("\"") && json.endsWith("\"")) {
+            String content = json.substring(1, json.length() - 1);
+
+            if (content.length() == 1) {
+                return content.charAt(0);
+            }
+
+            if (content.startsWith("\\")) {
+                if (SPECIAL_CHARACTERS_FROM_JSON.containsKey(content)) {
+                    return SPECIAL_CHARACTERS_FROM_JSON.get(content);
+                }
+                if (content.startsWith("\\u") && content.length() == 6) {
+                    String hex = content.substring(2);
+                    try {
+                        return (char) Integer.parseInt(hex, 16);
+                    } catch (NumberFormatException e) {
+                        throw new JsonParseException("Invalid Unicode escape sequence: " + content);
+                    }
+                }
+                throw new JsonParseException("Unsupported escape sequence: " + content);
+            }
+        }
+
+        throw new JsonParseException("Invalid JSON format for char: " + json);
+    }
+
+    public <T> T fromJson(String json, Class<T> classOfT) throws JsonParseException {
+        if (json == null || json.trim().isEmpty()) {
+            throw new JsonParseException("Input JSON string is null or empty");
+        }
+
+        if (isPrimitiveOrWrapper(classOfT)) {
+            return primitivesFromJson(json, classOfT);
+        }
+
+        return null;
     }
 }
