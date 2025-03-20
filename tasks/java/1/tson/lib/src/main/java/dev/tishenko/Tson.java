@@ -1,6 +1,8 @@
 package dev.tishenko;
 
+import java.lang.reflect.Array;
 import java.util.Map;
+import java.util.StringJoiner;
 
 public class Tson {
     static final Map<Character, String> SPECIAL_CHARACTERS = Map.of(
@@ -35,6 +37,18 @@ public class Tson {
         return sb.toString();
     }
 
+    private String arrayToJson(Object array) {
+        StringJoiner sj = new StringJoiner(",", "[", "]");
+        int length = Array.getLength(array);
+
+        for (int i = 0; i < length; i++) {
+            Object element = Array.get(array, i);
+            sj.add(toJson(element));
+        }
+
+        return sj.toString();
+    }
+
     public String toJson(Object obj) {
         if (obj == null) {
             return "null";
@@ -46,6 +60,10 @@ public class Tson {
 
         if (obj instanceof String) {
             return stringToJson((String) obj);
+        }
+
+        if (obj.getClass().isArray()) {
+            return arrayToJson(obj);
         }
 
         return obj.toString();
