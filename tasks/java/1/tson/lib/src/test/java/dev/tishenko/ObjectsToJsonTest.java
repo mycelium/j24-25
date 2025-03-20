@@ -228,6 +228,20 @@ class ObjectsToJsonTest {
         assertEquals(expectedJson, tson.toJson(new WithMethods()));
     }
 
+    static class WithStaticFields {
+        private static int privateStaticValue = 42;
+        public static int publicStaticValue = 42;
+        static int staticValue = 42;
+        int value = 42;
+    }
+
+    @Test
+    void objectWithStaticFields() {
+        Tson tson = new Tson();
+
+        assertEquals("{\"value\":42}", tson.toJson(new WithStaticFields()));
+    }
+
     static class WithNestedNonStaticClass {
         private String name = "OuterObject";
         private Nested nested = new Nested();

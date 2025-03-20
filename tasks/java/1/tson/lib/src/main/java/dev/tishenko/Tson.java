@@ -64,7 +64,8 @@ public class Tson {
         StringJoiner sj = new StringJoiner(",", "{", "}");
 
         for (Field field : clazz.getDeclaredFields()) {
-            if (Modifier.isTransient(field.getModifiers())) {
+            if (Modifier.isTransient(field.getModifiers())
+                    || Modifier.isStatic(field.getModifiers())) {
                 continue;
             }
 
