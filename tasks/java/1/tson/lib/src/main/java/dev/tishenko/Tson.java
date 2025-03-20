@@ -92,6 +92,22 @@ public class Tson {
         return sj.toString();
     }
 
+    private String mapToJson(Map<?, ?> map) {
+        StringJoiner sj = new StringJoiner(",", "{", "}");
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            Object key = entry.getKey();
+            String keyStr;
+            if (key == null) {
+                keyStr = "\"null\"";
+            } else {
+                keyStr = stringToJson(key.toString());
+            }
+            String valueStr = toJson(entry.getValue());
+            sj.add(keyStr + ":" + valueStr);
+        }
+        return sj.toString();
+    }
+
     public String toJson(Object obj) {
         if (obj == null) {
             return "null";
@@ -128,6 +144,10 @@ public class Tson {
 
         if (obj instanceof Collection) {
             return collectionToJson((Collection<?>) obj);
+        }
+
+        if (obj instanceof Map) {
+            return mapToJson((Map<?, ?>) obj);
         }
 
         if (obj.getClass().isArray()) {
