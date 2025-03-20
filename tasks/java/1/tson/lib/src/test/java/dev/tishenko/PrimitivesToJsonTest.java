@@ -66,6 +66,21 @@ public class PrimitivesToJsonTest {
     }
 
     @Test
+    void floatNanInfinityToJson() {
+        Tson tson = new Tson();
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            tson.toJson(Float.NaN);
+        });
+        assertThrows(IllegalArgumentException.class, () -> {
+            tson.toJson(Float.POSITIVE_INFINITY);
+        });
+        assertThrows(IllegalArgumentException.class, () -> {
+            tson.toJson(Float.NEGATIVE_INFINITY);
+        });
+    }
+
+    @Test
     void doubleToJson() {
         Tson tson = new Tson();
 
@@ -74,6 +89,21 @@ public class PrimitivesToJsonTest {
         assertEquals("1.0E100", tson.toJson(1E100));
         assertEquals("-1.0E100", tson.toJson(-1E100));
         assertEquals("2.718281828459045", tson.toJson(Double.valueOf(2.718281828459045)));
+    }
+
+    @Test
+    void doubleNanInfinityToJson() {
+        Tson tson = new Tson();
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            tson.toJson(Double.NaN);
+        });
+        assertThrows(IllegalArgumentException.class, () -> {
+            tson.toJson(Double.POSITIVE_INFINITY);
+        });
+        assertThrows(IllegalArgumentException.class, () -> {
+            tson.toJson(Double.NEGATIVE_INFINITY);
+        });
     }
 
     @Test

@@ -105,7 +105,24 @@ public class Tson {
             return stringToJson((String) obj);
         }
 
-        if (obj instanceof Number || obj instanceof Boolean) {
+        if (obj instanceof Boolean) {
+            return obj.toString();
+        }
+
+        if (obj instanceof Number) {
+            if (obj instanceof Double) {
+                Double d = (Double) obj;
+                if (d.isNaN() || d.isInfinite()) {
+                    throw new IllegalArgumentException(
+                            "Invalid double value (NaN or Infinity).");
+                }
+            } else if (obj instanceof Float) {
+                Float f = (Float) obj;
+                if (f.isNaN() || f.isInfinite()) {
+                    throw new IllegalArgumentException(
+                            "Invalid float value (NaN or Infinity).");
+                }
+            }
             return obj.toString();
         }
 
