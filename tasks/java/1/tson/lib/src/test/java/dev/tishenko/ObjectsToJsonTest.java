@@ -3,7 +3,7 @@ package dev.tishenko;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-class TsonTest {
+class ObjectsToJsonTest {
     @Test
     void nullToJson() {
         Tson tson = new Tson();
