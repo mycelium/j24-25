@@ -279,4 +279,24 @@ class TsonTest {
 
         assertEquals("null", tson.toJson(anonymousObject));
     }
+
+    static class ArrayElement {
+        private String name = "Element";
+        private int id;
+
+        ArrayElement(int id) {
+            this.id = id;
+        }
+    }
+
+    @Test
+    void arrayOfObjectsToJson() {
+        Tson tson = new Tson();
+
+        ArrayElement[] arr = { new ArrayElement(1), new ArrayElement(2), new ArrayElement(3) };
+        String expectedJson = "[{\"name\":\"Element\",\"id\":1},"
+                + "{\"name\":\"Element\",\"id\":2},"
+                + "{\"name\":\"Element\",\"id\":3}]";
+        assertEquals(expectedJson, tson.toJson(arr));
+    }
 }

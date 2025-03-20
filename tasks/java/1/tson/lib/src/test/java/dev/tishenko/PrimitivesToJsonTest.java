@@ -186,4 +186,27 @@ public class PrimitivesToJsonTest {
         assertEquals("[\"a\",\"\\\"\",\"\\\\\",\"\\b\",\"\\f\",\"\\n\",\"\\r\",\"\\t\",null]",
                 tson.toJson(new Character[] { 'a', '"', '\\', '\b', '\f', '\n', '\r', '\t', null }));
     }
+
+    @Test
+    void int2DArrayToJson() {
+        Tson tson = new Tson();
+
+        assertEquals("[]", tson.toJson(new int[][] {}));
+        assertEquals("[[],[]]", tson.toJson(new int[][] { {}, {} }));
+        assertEquals("[[100000,-100000,0],[1,-1,0]]",
+                tson.toJson(new int[][] { { 100000, -100000, 0 }, { 1, -1, 0 } }));
+    }
+
+    @Test
+    void integerWrapper2DArrayToJson() {
+        Tson tson = new Tson();
+
+        assertEquals("[]", tson.toJson(new Integer[][] {}));
+        assertEquals("[[],[]]", tson.toJson(new Integer[][] { {}, {} }));
+        assertEquals("[[100000,-100000,0],[1,-1,0]]",
+                tson.toJson(new Integer[][] { { 100000, -100000, 0 }, { 1, -1, 0 } }));
+
+        assertEquals("[[100000,null,0],[null,-1,0]]",
+                tson.toJson(new Integer[][] { { 100000, null, 0 }, { null, -1, 0 } }));
+    }
 }
