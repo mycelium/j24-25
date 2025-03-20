@@ -1,6 +1,8 @@
 package dev.tishenko;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.Map;
 import java.util.StringJoiner;
 
@@ -49,6 +51,35 @@ public class Tson {
         return sj.toString();
     }
 
+    private String objectToJson(Object obj) {
+        Class<?> clazz = obj.getClass();
+
+        if (clazz.isAnonymousClass() ||
+                clazz.isMemberClass() && !Modifier.isStatic(clazz.getModifiers()) ||
+                clazz.isLocalClass()) {
+            return "null";
+        }
+
+        StringJoiner sj = new StringJoiner(",", "{", "}");
+
+        for (Field field : clazz.getDeclaredFields()) {
+            if (Modifier.isTransient(field.getModifiers())) {
+                continue;
+            }
+
+            field.setAccessible(true);
+
+            try {
+                Object value = field.get(obj);
+                sj.add("\"" + field.getName() + "\":" + toJson(value));
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return sj.toString();
+    }
+
     public String toJson(Object obj) {
         if (obj == null) {
             return "null";
@@ -62,10 +93,14 @@ public class Tson {
             return stringToJson((String) obj);
         }
 
+        if (obj instanceof Number || obj instanceof Boolean) {
+            return obj.toString();
+        }
+
         if (obj.getClass().isArray()) {
             return arrayToJson(obj);
         }
 
-        return obj.toString();
+        return objectToJson(obj);
     }
 }
