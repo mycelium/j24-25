@@ -202,32 +202,11 @@ public class Tson {
     }
 
     private Character characterFromJson(String json) throws JsonParseException {
-        json = json.trim();
-
-        if (json.length() >= 2 && json.startsWith("\"") && json.endsWith("\"")) {
-            String content = json.substring(1, json.length() - 1);
-
-            if (content.length() == 1) {
-                return content.charAt(0);
-            }
-
-            if (content.startsWith("\\")) {
-                if (SPECIAL_CHARACTERS_FROM_JSON.containsKey(content)) {
-                    return SPECIAL_CHARACTERS_FROM_JSON.get(content);
-                }
-                if (content.startsWith("\\u") && content.length() == 6) {
-                    String hex = content.substring(2);
-                    try {
-                        return (char) Integer.parseInt(hex, 16);
-                    } catch (NumberFormatException e) {
-                        throw new JsonParseException("Invalid Unicode escape sequence: " + content);
-                    }
-                }
-                throw new JsonParseException("Unsupported escape sequence: " + content);
-            }
+        String str = stringFromJson(json);
+        if (str.length() != 1) {
+            throw new JsonParseException("Invalid JSON format for char: " + json);
         }
-
-        throw new JsonParseException("Invalid JSON format for char: " + json);
+        return str.charAt(0);
     }
 
     @SuppressWarnings("unchecked")
@@ -300,6 +279,71 @@ public class Tson {
         return elements.toArray(new String[0]);
     }
 
+    private String stringFromJson(String json) throws JsonParseException {
+        json = json.trim();
+
+        if (json.length() < 2 || !json.startsWith("\"") || !json.endsWith("\"")) {
+            throw new JsonParseException("Invalid JSON string format: " + json);
+        }
+
+        String content = json.substring(1, json.length() - 1);
+        return unescapeJsonString(content);
+    }
+
+    private String unescapeJsonString(String input) throws JsonParseException {
+        StringBuilder sb = new StringBuilder();
+        int length = input.length();
+        int i = 0;
+
+        while (i < length) {
+            char c = input.charAt(i++);
+
+            if (c != '\\') {
+                sb.append(c);
+                continue;
+            }
+
+            if (i >= length) {
+                throw new JsonParseException("Invalid escape sequence at end of string");
+            }
+
+            String escapeSequence = readEscapeSequence(input, i - 1);
+            Character specialChar = SPECIAL_CHARACTERS_FROM_JSON.get(escapeSequence);
+
+            if (specialChar != null) {
+                sb.append(specialChar);
+                i += escapeSequence.length() - 1;
+            } else if (escapeSequence.startsWith("\\u")) {
+                sb.append(parseUnicodeEscape(escapeSequence));
+                i += 5;
+            } else {
+                throw new JsonParseException("Unsupported escape sequence: " + escapeSequence);
+            }
+        }
+        return sb.toString();
+    }
+
+    private String readEscapeSequence(String input, int start) {
+        int end = start + 2;
+        if (input.charAt(start + 1) == 'u') {
+            end = Math.min(start + 6, input.length());
+        }
+        return input.substring(start, end);
+    }
+
+    private char parseUnicodeEscape(String escapeSequence) throws JsonParseException {
+        if (escapeSequence.length() < 6) {
+            throw new JsonParseException("Incomplete Unicode escape sequence: " + escapeSequence);
+        }
+
+        try {
+            String hex = escapeSequence.substring(2, 6);
+            return (char) Integer.parseInt(hex, 16);
+        } catch (NumberFormatException e) {
+            throw new JsonParseException("Invalid Unicode escape sequence: " + escapeSequence);
+        }
+    }
+
     private void setArrayElement(Object array, int index, Object element, Class<?> componentType) {
         if (componentType.isPrimitive()) {
             switch (componentType.getTypeName()) {
@@ -318,6 +362,7 @@ public class Tson {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T fromJson(String json, Class<T> classOfT) throws JsonParseException {
         if (json == null || json.trim().isEmpty()) {
             throw new JsonParseException("Input JSON string is null or empty");
@@ -325,6 +370,10 @@ public class Tson {
 
         if (isPrimitiveOrWrapper(classOfT)) {
             return primitivesFromJson(json, classOfT);
+        }
+
+        if (classOfT == String.class) {
+            return (T) stringFromJson(json);
         }
 
         if (classOfT.isArray()) {
