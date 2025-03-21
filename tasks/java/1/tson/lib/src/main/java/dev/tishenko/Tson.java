@@ -180,15 +180,17 @@ public class Tson {
 
     @SuppressWarnings("unchecked")
     private <T> T primitivesFromJson(String json, Class<T> classOfT) throws JsonParseException {
+        json = json.trim();
+
         try {
             return (T) switch (classOfT.getSimpleName()) {
-                case "byte", "Byte" -> Byte.valueOf(json.trim());
-                case "short", "Short" -> Short.valueOf(json.trim());
-                case "int", "Integer" -> Integer.valueOf(json.trim());
-                case "long", "Long" -> Long.valueOf(json.trim());
-                case "float", "Float" -> Float.valueOf(json.trim());
-                case "double", "Double" -> Double.valueOf(json.trim());
-                case "boolean", "Boolean" -> Boolean.valueOf(json.trim());
+                case "byte", "Byte" -> Byte.valueOf(json);
+                case "short", "Short" -> Short.valueOf(json);
+                case "int", "Integer" -> Integer.valueOf(json);
+                case "long", "Long" -> Long.valueOf(json);
+                case "float", "Float" -> Float.valueOf(json);
+                case "double", "Double" -> Double.valueOf(json);
+                case "boolean", "Boolean" -> Boolean.valueOf(json);
                 case "char", "Character" -> characterFromJson(json);
                 default -> throw new JsonParseException("Unsupported primitive type: " + classOfT.getName());
             };
@@ -198,6 +200,8 @@ public class Tson {
     }
 
     private Character characterFromJson(String json) throws JsonParseException {
+        json = json.trim();
+
         if (json.length() >= 2 && json.startsWith("\"") && json.endsWith("\"")) {
             String content = json.substring(1, json.length() - 1);
 
