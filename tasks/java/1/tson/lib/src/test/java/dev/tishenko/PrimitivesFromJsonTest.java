@@ -125,4 +125,172 @@ public class PrimitivesFromJsonTest {
         assertEquals('\u00A9', tson.fromJson("\"\\u00A9\"", char.class));
         assertEquals('\u03A9', tson.fromJson("\"\\u03A9\"", char.class));
     }
+
+    @Test
+    void arraysWithPrimitivesAndWhitespacesFromJson() {
+        Tson tson = new Tson();
+
+        assertArrayEquals(new byte[0], tson.fromJson("\t\r  \n \t[]\t\r  \n \t", byte[].class));
+
+        assertArrayEquals(new byte[] { 1, 2, 3 },
+                tson.fromJson("\t\r  \n \t[  1 ,  \t 2 ,  3 ]\t\r  \n \t", byte[].class));
+        assertArrayEquals(new short[] { 10, 20, 30 },
+                tson.fromJson("\t\r  \n \t[ 10 ,  \t20 , 30 ]\t\r  \n \t", short[].class));
+        assertArrayEquals(new int[] { 100, 200, 300 },
+                tson.fromJson("\t\r  \n \t[100 ,  \t200 , 300 ]\t\r  \n \t", int[].class));
+        assertArrayEquals(new long[] { 1000L, 2000L, 3000L },
+                tson.fromJson("\t\r  \n \t[1000 ,  \t2000 , 3000 ]\t\r  \n \t", long[].class));
+        assertArrayEquals(new float[] { 1.23f, 4.56f, 7.89f },
+                tson.fromJson("\t\r  \n \t[  1.23 ,  \t4.56 , 7.89 ]\t\r  \n \t", float[].class));
+        assertArrayEquals(new double[] { 2.71, 3.14, 1.61 },
+                tson.fromJson("\t\r  \n \t[2.71 , \t3.14 ,  1.61 ]\t\r  \n \t", double[].class));
+        assertArrayEquals(new boolean[] { true, false, true },
+                tson.fromJson("\t\r  \n \t[ true ,  \tfalse ,  true ]\t\r  \n \t", boolean[].class));
+        assertArrayEquals(new char[] { 'a', 'b', 'c' },
+                tson.fromJson("\t\r  \n \t[ \"a\" ,  \t\"b\" , \"c\" ]\t\r  \n \t", char[].class));
+    }
+
+    @Test
+    void arraysWithWrappersAndWhitespacesFromJson() {
+        Tson tson = new Tson();
+
+        assertArrayEquals(new Byte[0], tson.fromJson("\t\r  \n \t[]\t\r  \n \t", Byte[].class));
+
+        assertArrayEquals(new Byte[] { 1, 2, 3 },
+                tson.fromJson("\t\r  \n \t[  1 ,  \t2 ,  3 ]\t\r  \n \t", Byte[].class));
+        assertArrayEquals(new Short[] { 10, 20, 30 },
+                tson.fromJson("\t\r  \n \t[ 10 ,  \t20 , 30 ]\t\r  \n \t", Short[].class));
+        assertArrayEquals(new Integer[] { 100, 200, 300 },
+                tson.fromJson("\t\r  \n \t[100 ,  \t200 , 300 ]\t\r  \n \t", Integer[].class));
+        assertArrayEquals(new Long[] { 1000L, 2000L, 3000L },
+                tson.fromJson("\t\r  \n \t[1000 ,  \t2000 , 3000 ]\t\r  \n \t", Long[].class));
+        assertArrayEquals(new Float[] { 1.23f, 4.56f, 7.89f },
+                tson.fromJson("\t\r  \n \t[  1.23 ,  \t4.56 , 7.89 ]\t\r  \n \t", Float[].class));
+        assertArrayEquals(new Double[] { 2.71, 3.14, 1.61 },
+                tson.fromJson("\t\r  \n \t[2.71 , \t3.14 ,  1.61 ]\t\r  \n \t", Double[].class));
+        assertArrayEquals(new Boolean[] { true, false, true },
+                tson.fromJson("\t\r  \n \t[ true ,  \tfalse ,  true ]\t\r  \n \t", Boolean[].class));
+        assertArrayEquals(new Character[] { 'a', 'b', 'c' },
+                tson.fromJson("\t\r  \n \t[ \"a\" ,  \t\"b\" , \"c\" ]\t\r  \n \t", Character[].class));
+    }
+
+    @Test
+    void byteArrayFromJson() {
+        Tson tson = new Tson();
+
+        assertArrayEquals(new byte[0], tson.fromJson("[]", byte[].class));
+        assertArrayEquals(new byte[] { 100, -100, 0 }, tson.fromJson("[100, -100, 0]", byte[].class));
+
+        assertArrayEquals(new Byte[0], tson.fromJson("[]", Byte[].class));
+        assertArrayEquals(new Byte[] { 100, -100, 0, null }, tson.fromJson("[100, -100, 0, null]", Byte[].class));
+    }
+
+    @Test
+    void shortArrayFromJson() {
+        Tson tson = new Tson();
+
+        assertArrayEquals(new short[0], tson.fromJson("[]", short[].class));
+        assertArrayEquals(new short[] { 1000, -1000, 0 }, tson.fromJson("[1000, -1000, 0]", short[].class));
+
+        assertArrayEquals(new Short[0], tson.fromJson("[]", Short[].class));
+        assertArrayEquals(new Short[] { 1000, -1000, 0, null }, tson.fromJson("[1000, -1000, 0, null]", Short[].class));
+    }
+
+    @Test
+    void intArrayFromJson() {
+        Tson tson = new Tson();
+
+        assertArrayEquals(new int[0], tson.fromJson("[]", int[].class));
+        assertArrayEquals(new int[] { 100000, -100000, 0 }, tson.fromJson("[100000, -100000, 0]", int[].class));
+
+        assertArrayEquals(new Integer[0], tson.fromJson("[]", Integer[].class));
+        assertArrayEquals(new Integer[] { 100000, -100000, 0, null },
+                tson.fromJson("[100000, -100000, 0, null]", Integer[].class));
+    }
+
+    @Test
+    void longArrayFromJson() {
+        Tson tson = new Tson();
+
+        assertArrayEquals(new long[0], tson.fromJson("[]", long[].class));
+        assertArrayEquals(new long[] { 1000000000000L, -1000000000000L, 0L },
+                tson.fromJson("[1000000000000, -1000000000000, 0]", long[].class));
+
+        assertArrayEquals(new Long[0], tson.fromJson("[]", Long[].class));
+        assertArrayEquals(new Long[] { 1000000000000L, -1000000000000L, 0L, null },
+                tson.fromJson("[1000000000000, -1000000000000, 0, null]", Long[].class));
+    }
+
+    @Test
+    void booleanArrayFromJson() {
+        Tson tson = new Tson();
+
+        assertArrayEquals(new boolean[0], tson.fromJson("[]", boolean[].class));
+        assertArrayEquals(new boolean[] { true, false, true }, tson.fromJson("[true, false, true]", boolean[].class));
+
+        assertArrayEquals(new Boolean[0], tson.fromJson("[]", Boolean[].class));
+        assertArrayEquals(new Boolean[] { true, false, true, null },
+                tson.fromJson("[true, false, true, null]", Boolean[].class));
+    }
+
+    @Test
+    void floatArrayFromJson() {
+        Tson tson = new Tson();
+
+        assertArrayEquals(new float[0], tson.fromJson("[]", float[].class), 0.0001f);
+        assertArrayEquals(new float[] { 2.71828f, -2.71828f, 1E10f },
+                tson.fromJson("[2.71828, -2.71828, 1.0E10]", float[].class), 0.0001f);
+
+        assertArrayEquals(new Float[0], tson.fromJson("[]", Float[].class));
+        assertArrayEquals(new Float[] { 2.71828f, -2.71828f, 1E10f, null },
+                tson.fromJson("[2.71828, -2.71828, 1.0E10, null]", Float[].class));
+    }
+
+    @Test
+    void doubleArrayFromJson() {
+        Tson tson = new Tson();
+
+        assertArrayEquals(new double[0], tson.fromJson("[]", double[].class), 0.0001);
+        assertArrayEquals(new double[] { 2.718281828459045, -2.718281828459045, 1E100 },
+                tson.fromJson("[2.718281828459045, -2.718281828459045, 1.0E100]", double[].class), 0.0001);
+
+        assertArrayEquals(new Double[0], tson.fromJson("[]", Double[].class));
+        assertArrayEquals(new Double[] { 2.718281828459045, -2.718281828459045, 1E100, null },
+                tson.fromJson("[2.718281828459045, -2.718281828459045, 1.0E100, null]", Double[].class));
+    }
+
+    @Test
+    void charArrayFromJson() {
+        Tson tson = new Tson();
+
+        assertArrayEquals(new char[0], tson.fromJson("[]", char[].class));
+        assertArrayEquals(new char[] { 'a', '"', '\\', '\b', '\f', '\n', '\r', '\t' }, tson
+                .fromJson("[\"a\", \"\\\"\", \"\\\\\", \"\\b\", \"\\f\", \"\\n\", \"\\r\", \"\\t\"]", char[].class));
+
+        assertArrayEquals(new Character[0], tson.fromJson("[]", Character[].class));
+        assertArrayEquals(new Character[] { 'a', '"', '\\', '\b', '\f', '\n', '\r', '\t', null }, tson.fromJson(
+                "[\"a\", \"\\\"\", \"\\\\\", \"\\b\", \"\\f\", \"\\n\", \"\\r\", \"\\t\", null]", Character[].class));
+    }
+
+    @Test
+    void int2DArrayFromJson() {
+        Tson tson = new Tson();
+
+        assertArrayEquals(new int[][] {}, tson.fromJson("[]", int[][].class));
+        assertArrayEquals(new int[][] { {}, {} }, tson.fromJson("[[], []]", int[][].class));
+        assertArrayEquals(new int[][] { { 100000, -100000, 0 }, { 1, -1, 0 } },
+                tson.fromJson("[[100000, -100000, 0], [1, -1, 0]]", int[][].class));
+    }
+
+    @Test
+    void integerWrapper2DArrayFromJson() {
+        Tson tson = new Tson();
+
+        assertArrayEquals(new Integer[][] {}, tson.fromJson("[]", Integer[][].class));
+        assertArrayEquals(new Integer[][] { {}, {} }, tson.fromJson("[[], []]", Integer[][].class));
+        assertArrayEquals(new Integer[][] { { 100000, -100000, 0 }, { 1, -1, 0 } },
+                tson.fromJson("[[100000, -100000, 0], [1, -1, 0]]", Integer[][].class));
+        assertArrayEquals(new Integer[][] { { 100000, null, 0 }, { null, -1, 0 } },
+                tson.fromJson("[[100000, null, 0], [null, -1, 0]]", Integer[][].class));
+    }
 }
