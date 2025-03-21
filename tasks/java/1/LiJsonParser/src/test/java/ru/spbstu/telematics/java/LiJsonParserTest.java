@@ -1,13 +1,16 @@
 package ru.spbstu.telematics.java;
 import org.junit.Test;
-import static org.junit.Assert.*;
+import ru.spbstu.telematics.java.Common.LiJsonException;
+import ru.spbstu.telematics.java.Common.LiJsonUser;
+import ru.spbstu.telematics.java.JsonReading.LiJsonParser;
 import java.util.List;
 import java.util.Map;
+import static org.junit.Assert.*;
 
 public class LiJsonParserTest {
     //проверка на парсинг простого json-объекта в map
     @Test
-    public void testParseSimpleJsObject() throws LiJsonParserException {
+    public void testParseSimpleJsObject() throws LiJsonException {
         String json = "{\"name\": \"Din\", \"age\": 27, \"isFemale\": false}";
         LiJsonParser parser = new LiJsonParser(json);
         Object result = parser.parseCommon();
@@ -21,7 +24,7 @@ public class LiJsonParserTest {
 
     //проверка на парсинг json-объекта с вложенным json-объектом в map
     @Test
-    public void testParseNestedJsObject() throws LiJsonParserException {
+    public void testParseNestedJsObject() throws LiJsonException {
         String json = "{\"person\": {\"name\": \"Lara\", \"age\": 20}}";
         LiJsonParser parser = new LiJsonParser(json);
         Object result = parser.parseCommon();
@@ -35,7 +38,7 @@ public class LiJsonParserTest {
 
     //проверка на парсинг json-массива в List<Object>
     @Test
-    public void testParseJsArray() throws LiJsonParserException {
+    public void testParseJsArray() throws LiJsonException {
         String json = "[1, 2, 3, {\"key\": \"value\"}]";
         LiJsonParser parser = new LiJsonParser(json);
         Object result = parser.parseCommon();
@@ -50,7 +53,7 @@ public class LiJsonParserTest {
 
     //проверка на парсинг json-объекта с вложенным json-объектом и массивом в качестве ключа в map
     @Test
-    public void testParseComplexJsStructure() throws LiJsonParserException {
+    public void testParseComplexJsStructure() throws LiJsonException {
         String json = "{\"numbers\": [1, 2, 3], \"info\": {\"active\": true, \"details\": null}}";
         LiJsonParser parser = new LiJsonParser(json);
         Object result = parser.parseCommon();
@@ -66,7 +69,7 @@ public class LiJsonParserTest {
 
     //проверка на парсинг json-объекта в пользовательский класс LiJsonUser
     @Test
-    public void testParseJsToClass() throws LiJsonParserException {
+    public void testParseJsToClass() throws LiJsonException {
         String json = "{"
                 + "\"name\": \"Din\","
                 + "\"surname\": \"Don\","

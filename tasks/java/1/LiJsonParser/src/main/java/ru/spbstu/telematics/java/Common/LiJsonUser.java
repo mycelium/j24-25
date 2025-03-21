@@ -1,4 +1,4 @@
-package ru.spbstu.telematics.java;
+package ru.spbstu.telematics.java.Common;
 import java.util.List;
 
 public class LiJsonUser {

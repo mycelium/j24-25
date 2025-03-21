@@ -1,4 +1,4 @@
-package ru.spbstu.telematics.java;
+package ru.spbstu.telematics.java.JsonReading;
 
 // Класс JsonSplitToToken для разбиения json-строки на токены
 // Токен - строка/число/литерал
