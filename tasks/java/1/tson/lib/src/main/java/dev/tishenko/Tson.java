@@ -3,7 +3,9 @@ package dev.tishenko;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 
@@ -228,6 +230,94 @@ public class Tson {
         throw new JsonParseException("Invalid JSON format for char: " + json);
     }
 
+    @SuppressWarnings("unchecked")
+    private <T> T arrayFromJson(String json, Class<T> arrayClass) throws JsonParseException {
+        json = json.trim();
+
+        if (!json.startsWith("[") || !json.endsWith("]")) {
+            throw new JsonParseException("Invalid JSON array format: " + json);
+        }
+
+        String content = json.substring(1, json.length() - 1).trim();
+        String[] elements = content.isEmpty() ? new String[0] : splitJsonArrayElements(content);
+        Class<?> componentType = arrayClass.getComponentType();
+        Object array = Array.newInstance(componentType, elements.length);
+        for (int i = 0; i < elements.length; i++) {
+            String elementJson = elements[i].trim();
+            Object element = null;
+            if (!elementJson.equals("null")) {
+                element = fromJson(elementJson, componentType);
+            } else if (componentType.isPrimitive()) {
+                throw new JsonParseException("Cannot set null to primitive array element");
+            }
+            setArrayElement(array, i, element, componentType);
+        }
+        return (T) array;
+    }
+
+    /**
+     * Метод работает как "умный" split по запятой, игнорируя все запятые в строках,
+     * вложенных объектах и массивах.
+     * 
+     * @param content строка, в которой находится массив в JSON.
+     * @return одномерный массив из строковых JSON представлений элементов исходного
+     *         массива.
+     */
+    private String[] splitJsonArrayElements(String content) {
+        List<String> elements = new ArrayList<>();
+        int start = 0;
+        int depth = 0;
+        boolean inString = false;
+        boolean escape = false;
+
+        for (int i = 0; i < content.length(); i++) {
+            char c = content.charAt(i);
+
+            if (escape) {
+                escape = false;
+                continue;
+            }
+
+            switch (c) {
+                case '\\' -> escape = true;
+                case '"' -> inString = !inString;
+            }
+
+            if (!inString) {
+                switch (c) {
+                    case '[', '{' -> depth++;
+                    case ']', '}' -> depth--;
+                    case ',' -> {
+                        if (depth == 0) {
+                            elements.add(content.substring(start, i));
+                            start = i + 1;
+                        }
+                    }
+                }
+            }
+        }
+        elements.add(content.substring(start));
+        return elements.toArray(new String[0]);
+    }
+
+    private void setArrayElement(Object array, int index, Object element, Class<?> componentType) {
+        if (componentType.isPrimitive()) {
+            switch (componentType.getTypeName()) {
+                case "byte" -> ((byte[]) array)[index] = (Byte) element;
+                case "short" -> ((short[]) array)[index] = (Short) element;
+                case "int" -> ((int[]) array)[index] = (Integer) element;
+                case "long" -> ((long[]) array)[index] = (Long) element;
+                case "float" -> ((float[]) array)[index] = (Float) element;
+                case "double" -> ((double[]) array)[index] = (Double) element;
+                case "boolean" -> ((boolean[]) array)[index] = (Boolean) element;
+                case "char" -> ((char[]) array)[index] = (Character) element;
+                default -> throw new IllegalStateException();
+            }
+        } else {
+            ((Object[]) array)[index] = element;
+        }
+    }
+
     public <T> T fromJson(String json, Class<T> classOfT) throws JsonParseException {
         if (json == null || json.trim().isEmpty()) {
             throw new JsonParseException("Input JSON string is null or empty");
@@ -235,6 +325,10 @@ public class Tson {
 
         if (isPrimitiveOrWrapper(classOfT)) {
             return primitivesFromJson(json, classOfT);
+        }
+
+        if (classOfT.isArray()) {
+            return arrayFromJson(json, classOfT);
         }
 
         return null;
