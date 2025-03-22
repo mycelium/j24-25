@@ -500,6 +500,13 @@ public class Tson {
             throw new JsonParseException("Input JSON string is null or empty");
         }
 
+        if (json.trim().equals("null")) {
+            if (classOfT.isPrimitive()) {
+                throw new JsonParseException("Null values are not allowed for primitive types.");
+            }
+            return null;
+        }
+
         if (classOfT == Object.class) {
             return (T) dynamicFromJson(json);
         }

@@ -3,7 +3,32 @@ package dev.tishenko;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.List;
+import java.util.Map;
+
 public class ObjectsFromJsonTest {
+    static class SomeClass {
+    }
+
+    @Test
+    void nullsFromJson() {
+        Tson tson = new Tson();
+
+        assertNull(tson.fromJson("null", Object.class));
+        assertNull(tson.fromJson("null", String.class));
+        assertNull(tson.fromJson("null", Boolean.class));
+        assertNull(tson.fromJson("null", Byte.class));
+        assertNull(tson.fromJson("null", Short.class));
+        assertNull(tson.fromJson("null", Integer.class));
+        assertNull(tson.fromJson("null", Long.class));
+        assertNull(tson.fromJson("null", Double.class));
+        assertNull(tson.fromJson("null", Float.class));
+        assertNull(tson.fromJson("null", Character.class));
+        assertNull(tson.fromJson("null", SomeClass.class));
+        assertNull(tson.fromJson("null", List.class));
+        assertNull(tson.fromJson("null", Map.class));
+    }
+
     @Test
     void stringFromJson() {
         Tson tson = new Tson();
