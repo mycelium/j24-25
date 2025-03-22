@@ -1,7 +1,9 @@
 package dev.tishenko;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -393,7 +395,7 @@ public class Tson {
         }
 
         String content = json.substring(1, json.length() - 1).trim();
-        List<Map.Entry<String, String>> entries = parseObjectEntries(content);
+        List<Map.Entry<String, String>> entries = splitTopLevelEntries(content);
         Map<String, Object> map = new HashMap<>();
 
         for (Map.Entry<String, String> entry : entries) {
@@ -406,7 +408,7 @@ public class Tson {
         return map;
     }
 
-    private List<Map.Entry<String, String>> parseObjectEntries(String content) {
+    private List<Map.Entry<String, String>> splitTopLevelEntries(String content) {
         List<Map.Entry<String, String>> entries = new ArrayList<>();
         List<String> pairs = splitTopLevelCommaSeparated(content);
         for (String pair : pairs) {
@@ -448,6 +450,50 @@ public class Tson {
         return list;
     }
 
+    private <T> T objectFromJson(String json, Class<T> classOfT) throws JsonParseException {
+        if (classOfT.isAnonymousClass() || classOfT.isLocalClass() ||
+                classOfT.isMemberClass() && !Modifier.isStatic(classOfT.getModifiers())) {
+            return null;
+        }
+
+        json = json.trim();
+        if (!json.startsWith("{") || !json.endsWith("}")) {
+            throw new JsonParseException("Invalid JSON object format for class " + classOfT.getName() + ": " + json);
+        }
+
+        String content = json.substring(1, json.length() - 1).trim();
+        List<Map.Entry<String, String>> entries = splitTopLevelEntries(content);
+
+        try {
+            Constructor<T> constructor = classOfT.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            T instance = constructor.newInstance();
+
+            for (Map.Entry<String, String> entry : entries) {
+                String fieldName = entry.getKey();
+                String valueJson = entry.getValue();
+
+                try {
+                    Field field = classOfT.getDeclaredField(fieldName);
+                    if (Modifier.isStatic(field.getModifiers())
+                            || Modifier.isTransient(field.getModifiers())) {
+                        continue;
+                    }
+                    field.setAccessible(true);
+                    Object value = fromJson(valueJson, field.getType());
+                    field.set(instance, value);
+                } catch (NoSuchFieldException e) {
+                    // Ignore unknown fields
+                }
+            }
+
+            return instance;
+        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException
+                | InvocationTargetException e) {
+            throw new IllegalArgumentException("Failed to create instance of " + classOfT.getName(), e);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     public <T> T fromJson(String json, Class<T> classOfT) throws JsonParseException {
         if (json == null || json.trim().isEmpty()) {
@@ -478,6 +524,6 @@ public class Tson {
             return (T) listFromJson(json);
         }
 
-        return null;
+        return objectFromJson(json, classOfT);
     }
 }
