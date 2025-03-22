@@ -3,8 +3,10 @@ package dev.tishenko;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -218,11 +220,11 @@ public class Tson {
         }
 
         String content = json.substring(1, json.length() - 1).trim();
-        String[] elements = content.isEmpty() ? new String[0] : splitJsonArrayElements(content);
+        List<String> elements = content.isEmpty() ? new ArrayList<String>() : splitJsonArrayElements(content);
         Class<?> componentType = arrayClass.getComponentType();
-        Object array = Array.newInstance(componentType, elements.length);
-        for (int i = 0; i < elements.length; i++) {
-            String elementJson = elements[i].trim();
+        Object array = Array.newInstance(componentType, elements.size());
+        for (int i = 0; i < elements.size(); i++) {
+            String elementJson = elements.get(i).trim();
             Object element = null;
             if (!elementJson.equals("null")) {
                 element = fromJson(elementJson, componentType);
@@ -234,16 +236,8 @@ public class Tson {
         return (T) array;
     }
 
-    /**
-     * Метод работает как "умный" split по запятой, игнорируя все запятые в строках,
-     * вложенных объектах и массивах.
-     * 
-     * @param content строка, в которой находится массив в JSON.
-     * @return одномерный массив из строковых JSON представлений элементов исходного
-     *         массива.
-     */
-    private String[] splitJsonArrayElements(String content) {
-        List<String> elements = new ArrayList<>();
+    private List<String> splitTopLevelCommaSeparated(String content) {
+        List<String> parts = new ArrayList<>();
         int start = 0;
         int depth = 0;
         boolean inString = false;
@@ -264,19 +258,26 @@ public class Tson {
 
             if (!inString) {
                 switch (c) {
-                    case '[', '{' -> depth++;
-                    case ']', '}' -> depth--;
+                    case '{', '[' -> depth++;
+                    case '}', ']' -> depth--;
                     case ',' -> {
                         if (depth == 0) {
-                            elements.add(content.substring(start, i));
+                            parts.add(content.substring(start, i).trim());
                             start = i + 1;
                         }
                     }
                 }
             }
         }
-        elements.add(content.substring(start));
-        return elements.toArray(new String[0]);
+        parts.add(content.substring(start).trim());
+        return parts;
+    }
+
+    private List<String> splitJsonArrayElements(String content) {
+        if (content.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return splitTopLevelCommaSeparated(content);
     }
 
     private String stringFromJson(String json) throws JsonParseException {
@@ -362,10 +363,99 @@ public class Tson {
         }
     }
 
+    private Object dynamicFromJson(String json) throws JsonParseException {
+        json = json.trim();
+
+        return switch (json) {
+            case String s when s.startsWith("{") -> mapFromJson(s);
+            case String s when s.startsWith("[") -> listFromJson(s);
+            case String s when s.startsWith("\"") -> stringFromJson(s);
+            case "null" -> null;
+            case "true" -> true;
+            case "false" -> false;
+            default -> {
+                try {
+                    yield (json.contains(".") || json.toLowerCase().contains("e"))
+                            ? Double.valueOf(json)
+                            : Long.valueOf(json);
+                } catch (NumberFormatException e) {
+                    throw new JsonParseException("Unknown JSON value: " + json, e);
+                }
+            }
+        };
+    }
+
+    private Map<String, Object> mapFromJson(String json) throws JsonParseException {
+        json = json.trim();
+
+        if (!json.startsWith("{") || !json.endsWith("}")) {
+            throw new JsonParseException("Invalid JSON object format: " + json);
+        }
+
+        String content = json.substring(1, json.length() - 1).trim();
+        List<Map.Entry<String, String>> entries = parseObjectEntries(content);
+        Map<String, Object> map = new HashMap<>();
+
+        for (Map.Entry<String, String> entry : entries) {
+            String key = entry.getKey();
+            String valueJson = entry.getValue();
+            Object value = fromJson(valueJson, Object.class);
+            map.put(key, value);
+        }
+
+        return map;
+    }
+
+    private List<Map.Entry<String, String>> parseObjectEntries(String content) {
+        List<Map.Entry<String, String>> entries = new ArrayList<>();
+        List<String> pairs = splitTopLevelCommaSeparated(content);
+        for (String pair : pairs) {
+            if (pair.isEmpty()) {
+                continue;
+            }
+            processPair(pair, entries);
+        }
+        return entries;
+    }
+
+    private void processPair(String pair, List<Map.Entry<String, String>> entries) {
+        int colonIndex = pair.indexOf(':');
+        if (colonIndex == -1) {
+            throw new JsonParseException("Invalid JSON object entry: " + pair);
+        }
+
+        String keyJson = pair.substring(0, colonIndex).trim();
+        String valueJson = pair.substring(colonIndex + 1).trim();
+        String key = stringFromJson(keyJson);
+        entries.add(new AbstractMap.SimpleEntry<>(key, valueJson));
+    }
+
+    private List<Object> listFromJson(String json) throws JsonParseException {
+        json = json.trim();
+
+        if (!json.startsWith("[") || !json.endsWith("]")) {
+            throw new JsonParseException("Invalid JSON array format: " + json);
+        }
+
+        String content = json.substring(1, json.length() - 1).trim();
+        List<String> elements = splitJsonArrayElements(content);
+        List<Object> list = new ArrayList<>();
+
+        for (String element : elements) {
+            list.add(fromJson(element, Object.class));
+        }
+
+        return list;
+    }
+
     @SuppressWarnings("unchecked")
     public <T> T fromJson(String json, Class<T> classOfT) throws JsonParseException {
         if (json == null || json.trim().isEmpty()) {
             throw new JsonParseException("Input JSON string is null or empty");
+        }
+
+        if (classOfT == Object.class) {
+            return (T) dynamicFromJson(json);
         }
 
         if (isPrimitiveOrWrapper(classOfT)) {
@@ -378,6 +468,14 @@ public class Tson {
 
         if (classOfT.isArray()) {
             return arrayFromJson(json, classOfT);
+        }
+
+        if (classOfT == Map.class) {
+            return (T) mapFromJson(json);
+        }
+
+        if (classOfT == List.class) {
+            return (T) listFromJson(json);
         }
 
         return null;
