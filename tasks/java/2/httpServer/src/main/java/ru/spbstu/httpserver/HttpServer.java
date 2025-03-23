@@ -15,9 +15,31 @@ public class HttpServer {
     private ExecutorService executor;
     private final ConcurrentHashMap<RouteKey, RequestHandler> routes = new ConcurrentHashMap<>();
     private boolean isRunning;
+    private final Map<String, Map<String, Object>> dataStore = new ConcurrentHashMap<>();
+
+    public Map<String, Map<String, Object>> getDataStore() {
+        return  dataStore;
+    }
 
     // Запись маршрута как record
-    private record RouteKey(String method, String path) {
+    private record RouteKey(String method, String pathPattern) {
+        public boolean matches(String method, String path) {
+            if (!this.method.equals(method)) {
+                return false;
+            }
+            // Простая проверка для динамических путей
+            if (pathPattern.startsWith("/data/") && path.startsWith("/data/")) {
+                return true;
+            }
+            return pathPattern.equals(path);
+        }
+
+        public String extractId(String path) {
+            if (pathPattern.startsWith("/data/") && path.startsWith("/data/")) {
+                return path.split("/")[2]; // Извлекаем ID из пути
+            }
+            return null;
+        }
     }
 
     @FunctionalInterface
@@ -51,20 +73,42 @@ public class HttpServer {
              BufferedReader reader = new BufferedReader(new InputStreamReader(Channels.newInputStream(clientChannel)));
              BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(Channels.newOutputStream(clientChannel)))) {
 
-            // Парсинг запроса
+            System.out.println("New connection received");
+
             HttpRequest request = HttpRequest.parse(reader);
+            System.out.println("Request parsed: " + request.method() + " " + request.path());
+
             HttpResponse response = new HttpResponse();
 
-            // Маршрутизация
-            RouteKey key = new RouteKey(request.method(), request.path());
-            RequestHandler handler = routes.getOrDefault(key, this::defaultHandler);
+            // Поиск подходящего обработчика
+            RequestHandler handler = null;
+            String id = null;
+            for (Map.Entry<RouteKey, RequestHandler> entry : routes.entrySet()) {
+                RouteKey key = entry.getKey();
+                if (key.matches(request.method(), request.path())) {
+                    handler = entry.getValue();
+                    id = key.extractId(request.path());
+                    break;
+                }
+            }
 
-            // Обработка запроса
-            handler.handle(request, response);
+            if (handler == null) {
+                defaultHandler(request, response);
+            } else {
+                if (id != null) {
+                    // Передаём ID в запрос
+                    request.headers().put("X-Resource-ID", id);
+                }
+                handler.handle(request, response);
+            }
 
-            // Отправка ответа
             sendResponse(writer, response);
+            System.out.println("Response sent: " + response.getStatus());
         } catch (IOException e) {
+            System.err.println("Error handling connection: " + e.getMessage());
+            e.printStackTrace();
+        } catch (Exception e) {
+            System.err.println("Unexpected error: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -94,8 +138,8 @@ public class HttpServer {
         response.addHeader("Content-Type", "text/html");
     }
 
-    public void addRoute(String method, String path, RequestHandler handler) {
-        routes.put(new RouteKey(method, path), handler);
+    public void addRoute(String method, String pathPattern, RequestHandler handler) {
+        routes.put(new RouteKey(method, pathPattern), handler);
     }
 
     public void stop() {

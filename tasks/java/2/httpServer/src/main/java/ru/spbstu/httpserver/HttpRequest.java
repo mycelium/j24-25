@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import ru.spbstu.jsonparser.JsonParser;
 
 public record HttpRequest(
         String method,
@@ -38,7 +39,28 @@ public record HttpRequest(
             body.append((char) reader.read());
         }
 
-        return new HttpRequest(method, path, protocol, Collections.unmodifiableMap(headers), body.toString());
+        return new HttpRequest(method, path, protocol, new HashMap<>(headers), body.toString());
     }
 
+    public Map<String, Object> parseJson() {
+        if (!"application/json".equals(headers.get("Content-Type"))) {
+            return Collections.emptyMap();
+        }
+
+        return JsonParser.fromJsonToMap(body.substring(1, body.length()-1));
+    }
+
+    public Map<String, String> parseFormData() {
+        if (!"application/x-www-form-urlencoded".equals(headers.get("Content-Type"))) {
+            return Collections.emptyMap();
+        }
+        Map<String, String> formData = new HashMap<>();
+        for (String pair : body.split("&")) {
+            String[] keyValue = pair.split("=");
+            if (keyValue.length == 2) {
+                formData.put(keyValue[0], keyValue[1]);
+            }
+        }
+        return formData;
+    }
 }
