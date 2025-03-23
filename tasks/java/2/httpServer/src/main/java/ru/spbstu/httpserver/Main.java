@@ -50,6 +50,79 @@ public class Main {
             response.addHeader("Content-Type", "application/json");
         });
 
+
+        // PUT-запросы для обновления данных
+        server.addRoute("PUT", "/data/{id}", (request, response) -> {
+            String id = request.headers().get("X-Resource-ID");
+            if (id == null) {
+                response.setStatus(400, "Bad Request");
+                response.setBody("ID not provided");
+                return;
+            }
+
+            Map<String, Object> jsonData = request.parseJson();
+            if (!jsonData.isEmpty()) {
+                server.getDataStore().put(id, jsonData);
+                response.setStatus(200, "OK");
+                response.setBody("Data updated for ID: " + id);
+            } else {
+                response.setStatus(400, "Bad Request");
+                response.setBody("Invalid or unsupported JSON data");
+            }
+            response.addHeader("Content-Type", "application/json");
+        });
+
+        // PATCH-запросы для частичного обновления данных
+        server.addRoute("PATCH", "/data/{id}", (request, response) -> {
+            String id = request.headers().get("X-Resource-ID");
+            if (id == null) {
+                response.setStatus(400, "Bad Request");
+                response.setBody("ID not provided");
+                return;
+            }
+
+            Map<String, Object> existingData = server.getDataStore().get(id);
+            if (existingData == null) {
+                response.setStatus(404, "Not Found");
+                response.setBody("No data found for ID " + id);
+                return;
+            }
+
+            Map<String, Object> jsonData = request.parseJson();
+            if (!jsonData.isEmpty()) {
+                existingData.putAll(jsonData); // Обновляем только переданные поля
+                server.getDataStore().put(id, existingData);
+                response.setStatus(200, "OK");
+                response.setBody("Data partially updated for ID: " + id);
+            } else {
+                response.setStatus(400, "Bad Request");
+                response.setBody("Invalid or unsupported JSON data");
+            }
+            response.addHeader("Content-Type", "application/json");
+        });
+
+        // DELETE-запросы для удаления данных
+        server.addRoute("DELETE", "/data/{id}", (request, response) -> {
+            String id = request.headers().get("X-Resource-ID");
+            if (id == null) {
+                response.setStatus(400, "Bad Request");
+                response.setBody("ID not provided");
+                return;
+            }
+
+            Map<String, Object> removedData = server.getDataStore().remove(id);
+            if (removedData != null) {
+                response.setStatus(200, "OK");
+                response.setBody("Data deleted for ID: " + id);
+            } else {
+                response.setStatus(404, "Not Found");
+                response.setBody("No data found for ID " + id);
+            }
+            response.addHeader("Content-Type", "application/json");
+        });
+
+
+
         // Запуск сервера
         try {
             server.start("localhost", 8080, 4, true); // Используем виртуальные потоки

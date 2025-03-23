@@ -47,7 +47,10 @@ public record HttpRequest(
             return Collections.emptyMap();
         }
 
-        return JsonParser.fromJsonToMap(body.substring(1, body.length()-1));
+        if (body.charAt(0) == '\'' && body.charAt(body.length() - 1) == '\'')
+            return JsonParser.fromJsonToMap(body.substring(1, body.length() - 1));
+        else
+            return JsonParser.fromJsonToMap(body);
     }
 
     public Map<String, String> parseFormData() {
