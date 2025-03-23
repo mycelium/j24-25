@@ -30,6 +30,28 @@ public class Main {
             response.addHeader("Content-Type", "application/json");
         });
 
+
+        server.addRoute("POST", "/data/{id}", (request, response) -> {
+            String id = request.headers().get("X-Resource-ID"); // Извлекаем ID из заголовка
+            if (id == null) {
+                response.setStatus(400, "Bad Request");
+                response.setBody("ID not provided");
+                return;
+            }
+
+            Map<String, Object> jsonData = request.parseJson();
+            if (!jsonData.isEmpty()) {
+                server.getDataStore().put(id, jsonData);
+                response.setStatus(200, "OK");
+                response.setBody("Data stored with ID: " + id);
+            } else {
+                response.setStatus(400, "Bad Request");
+                response.setBody("Invalid or unsupported JSON data");
+            }
+            response.addHeader("Content-Type", "application/json");
+        });
+
+
         // GET-запросы для получения данных
         server.addRoute("GET", "/data/{id}", (request, response) -> {
             String id = request.headers().get("X-Resource-ID"); // Извлекаем ID из заголовка
