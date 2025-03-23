@@ -1,4 +1,4 @@
-package ru.spbstu;
+package ru.spbstu.httpserver;
 
 import java.io.*;
 import java.net.InetSocketAddress;

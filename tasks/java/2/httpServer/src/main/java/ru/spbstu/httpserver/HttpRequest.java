@@ -1,4 +1,4 @@
-package ru.spbstu;
+package ru.spbstu.httpserver;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -40,4 +40,5 @@ public record HttpRequest(
 
         return new HttpRequest(method, path, protocol, Collections.unmodifiableMap(headers), body.toString());
     }
+
 }

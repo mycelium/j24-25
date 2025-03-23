@@ -1,4 +1,4 @@
-package ru.spbstu;
+package ru.spbstu.httpserver;
 
 import java.util.HashMap;
 import java.util.Map;

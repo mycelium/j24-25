@@ -1,4 +1,4 @@
-package ru.spbstu;
+package ru.spbstu.jsonparser;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;

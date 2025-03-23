@@ -1,4 +1,4 @@
-package ru.spbstu;
+package ru.spbstu.jsonparser;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;

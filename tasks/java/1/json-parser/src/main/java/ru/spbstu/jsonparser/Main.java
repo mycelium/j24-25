@@ -1,4 +1,4 @@
-package ru.spbstu;
+package ru.spbstu.jsonparser;
 
 import java.util.*;
 
