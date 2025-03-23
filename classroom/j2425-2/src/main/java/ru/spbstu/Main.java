@@ -13,7 +13,9 @@ public class Main {
         logger.info("Project started");
         try {
             var server = new HttpServer(30001);
-            HttpClient.authorize("login", "password");
+            HttpClient.authorize("Arseniy1", "Qwerty1234sol");
+            HttpClient.getUsers();
+            HttpClient.generateImage("Русская буква Л");
         }catch (IOException e){
             e.printStackTrace();
         }
