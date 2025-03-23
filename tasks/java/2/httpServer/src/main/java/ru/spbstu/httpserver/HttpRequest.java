@@ -52,18 +52,4 @@ public record HttpRequest(
         else
             return JsonParser.fromJsonToMap(body);
     }
-
-    public Map<String, String> parseFormData() {
-        if (!"application/x-www-form-urlencoded".equals(headers.get("Content-Type"))) {
-            return Collections.emptyMap();
-        }
-        Map<String, String> formData = new HashMap<>();
-        for (String pair : body.split("&")) {
-            String[] keyValue = pair.split("=");
-            if (keyValue.length == 2) {
-                formData.put(keyValue[0], keyValue[1]);
-            }
-        }
-        return formData;
-    }
 }

@@ -24,14 +24,8 @@ public class HttpServer {
     // Запись маршрута как record
     private record RouteKey(String method, String pathPattern) {
         public boolean matches(String method, String path) {
-            if (!this.method.equals(method)) {
-                return false;
-            }
-            // Простая проверка для динамических путей
-            if (pathPattern.startsWith("/data/") && path.startsWith("/data/")) {
-                return true;
-            }
-            return pathPattern.equals(path);
+            return this.method.equals(method) &&
+                    (pathPattern.startsWith("/data/") ? path.startsWith("/data/") : pathPattern.equals(path));
         }
 
         public String extractId(String path) {
