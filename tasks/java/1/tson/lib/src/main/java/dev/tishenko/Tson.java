@@ -377,9 +377,11 @@ public class Tson {
             case "false" -> false;
             default -> {
                 try {
-                    yield (json.contains(".") || json.toLowerCase().contains("e"))
-                            ? Double.valueOf(json)
-                            : Long.valueOf(json);
+                    if (json.contains(".") || json.toLowerCase().contains("e")) {
+                        yield Double.valueOf(json);
+                    } else {
+                        yield Long.valueOf(json);
+                    }
                 } catch (NumberFormatException e) {
                     throw new JsonParseException("Unknown JSON value: " + json, e);
                 }

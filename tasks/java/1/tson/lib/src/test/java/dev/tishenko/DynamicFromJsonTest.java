@@ -34,7 +34,7 @@ public class DynamicFromJsonTest {
         assertEquals(true, map.get("flag"));
 
         List<?> nestedList = (List<?>) map.get("nestedList");
-        assertEquals(1.0, nestedList.get(0));
+        assertEquals(1L, nestedList.get(0));
         assertEquals("two", nestedList.get(1));
         assertEquals(false, nestedList.get(2));
     }
