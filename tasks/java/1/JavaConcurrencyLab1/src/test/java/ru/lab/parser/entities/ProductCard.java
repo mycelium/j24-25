@@ -1,4 +1,4 @@
-package ru.lab.json_parser.test_entities;
+package ru.lab.parser.entities;
 
 import java.util.*;
 

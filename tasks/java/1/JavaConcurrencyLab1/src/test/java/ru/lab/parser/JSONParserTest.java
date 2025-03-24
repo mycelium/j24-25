@@ -1,10 +1,10 @@
-package ru.lab.json_parser;
+package ru.lab.parser;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import ru.lab.json_parser.test_entities.Category;
-import ru.lab.json_parser.test_entities.Image;
-import ru.lab.json_parser.test_entities.ProductCard;
+import ru.lab.parser.entities.Category;
+import ru.lab.parser.entities.Image;
+import ru.lab.parser.entities.ProductCard;
 import java.util.*;
 
 public class JSONParserTest {
@@ -53,5 +53,12 @@ public class JSONParserTest {
     @Test
     public void parsingJSONToMap(){
         Assertions.assertEquals(JSONParser.readJsonToMap(JSON), testMap);
+    }
+
+    @Test
+    public void parsingArray(){
+        List<String> list = List.of("apple", "banana", "cherry");
+        System.out.println(JSONParser.readJsonToEntity("[\"apple\", \"banana\", \"cherry\"]", List.class));
+        Assertions.assertEquals(JSONParser.readJsonToEntity("[\"apple\", \"banana\", \"cherry\"]", List.class), list);
     }
 }

@@ -1,8 +1,9 @@
-package ru.lab.json_parser;
+package ru.lab.parser;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.stream.IntStream;
 
@@ -114,10 +115,94 @@ public class JSONParser {
      */
     public static <T> T readJsonToEntity(String json, Class<T> clazz) {
         try {
-            return fillClazzWithMap(readJsonToMap(json), clazz);
+            if (json.startsWith("{") && json.endsWith("}")){
+                return fillClazzWithMap(parseObject(json.substring(1, json.length() - 1)), clazz);
+            }
+            else if(json.startsWith("[") && json.endsWith("]") && Iterable.class.isAssignableFrom(clazz)){
+                // Если целевой класс — это массив
+                if (clazz.isArray()) {
+                    return parseJsonArrayToArray(json, clazz);
+                }
+                // Если целевой класс — это коллекция (например, List, Set)
+                else if (Iterable.class.isAssignableFrom(clazz)) {
+                    return parseArrayToCollection(json, clazz);
+                }
+                // Если целевой класс — это одиночный объект, но JSON — массив
+                else {
+                    throw new IllegalArgumentException("JSON array cannot be mapped to a single object of type " + clazz.getName());
+                }
+            }
+            else {
+                return parsePrimitiveValueInClass(json, clazz);
+            }
         } catch (Exception e) {
             throw new RuntimeException("Failed to convert json to Entity", e);
         }
+    }
+
+    private static <T> T parsePrimitiveValueInClass(String json, Class<T> clazz) {
+        return (T) switch (clazz.getSimpleName()) {
+            case "String" -> json;
+            case "Long", "long" -> Long.valueOf(json);
+            case "Integer", "int" -> Integer.valueOf(json);
+            case "Short", "short" -> Short.valueOf(json);
+            case "Byte", "byte" -> Byte.valueOf(json);
+            case "Double", "double" -> Double.valueOf(json);
+            case "Float", "float" -> Float.valueOf(json);
+            case "Character", "char" -> json.charAt(0);
+            case "Boolean", "boolean" -> Boolean.valueOf(json);
+            default -> throw new IllegalArgumentException("Unsupported primitive type: " + clazz.getName());
+        };
+    }
+
+    private static <T> T parseJsonArrayToArray(String json, Class<T> clazz) {
+        List<Object> list = parseArray(json.substring(1, json.length() - 1));
+        Class<?> componentType = clazz.getComponentType(); // Тип элементов массива
+
+        // Создаём массив нужного типа
+        Object array = Array.newInstance(componentType, list.size());
+
+        // Заполняем массив элементами из списка
+        for (int i = 0; i < list.size(); i++) {
+            Object value = list.get(i);
+            if (value instanceof Map) {
+                value = fillClazzWithMap((Map<String, Object>) value, componentType);
+            }
+            Array.set(array, i, value);
+        }
+
+        return (T) array;
+    }
+
+    private static <T> T parseArrayToCollection(String json, Class<T> clazz) {
+        List<Object> list = parseArray(json.substring(1, json.length() - 1));
+
+        // Определяем тип элементов коллекции
+        Class<?> elementType = Object.class;
+        if (clazz.getGenericSuperclass() instanceof ParameterizedType) {
+            ParameterizedType parameterizedType = (ParameterizedType) clazz.getGenericSuperclass();
+            elementType = (Class<?>) parameterizedType.getActualTypeArguments()[0];
+        }
+
+        // Создаём коллекцию нужного типа
+        Collection<Object> collection;
+        if (List.class.isAssignableFrom(clazz)) {
+            collection = new ArrayList<>();
+        } else if (Set.class.isAssignableFrom(clazz)) {
+            collection = new HashSet<>();
+        } else {
+            throw new IllegalArgumentException("Unsupported collection type: " + clazz.getName());
+        }
+
+        // Заполняем коллекцию элементами из списка
+        for (Object value : list) {
+            if (value instanceof Map) {
+                value = fillClazzWithMap((Map<String, Object>) value, elementType);
+            }
+            collection.add(value);
+        }
+
+        return (T) collection;
     }
 
     /**
@@ -146,6 +231,15 @@ public class JSONParser {
         json = json.trim();
         if(json.startsWith("{") && json.endsWith("}")){
             return parseObject(json.substring(1, json.length() - 1));
+        } else {
+            throw new IllegalArgumentException("Invalid JSON string");
+        }
+    }
+
+    public static Object readJsonToList(String json){
+        json = json.trim();
+        if(json.startsWith("[") && json.endsWith("]")){
+            return parseValue(json.substring(1, json.length() - 1));
         } else {
             throw new IllegalArgumentException("Invalid JSON string");
         }
