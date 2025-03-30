@@ -133,7 +133,11 @@ public class HttpServer {
     }
 
     public void addRoute(String method, String pathPattern, RequestHandler handler) {
-        routes.put(new RouteKey(method, pathPattern), handler);
+        RouteKey key = new RouteKey(method, pathPattern);
+        if (routes.containsKey(key)) {
+            throw new IllegalStateException("Route already exists: " + method + " " + pathPattern);
+        }
+        routes.put(key, handler);
     }
 
     public void stop() {
