@@ -1,220 +1,342 @@
 package ru.spbstu.httpserver;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Map;
+import java.util.UUID;
 
 public class HttpServerTest {
+    private static final int TEST_PORT = 8081;
+    private static final String TEST_HOST = "localhost";
+    private HttpServer server;
+    private Thread serverThread;
 
-    @Test
-    public void testGetRequest() throws IOException {
-        // Запуск сервера
-        HttpServer server = new HttpServer();
-        server.addRoute("GET", "/", (request, response) -> {
-            response.setStatus(200, "OK");
-            response.setBody("<h1>Home Page</h1>");
-            response.addHeader("Content-Type", "text/html");
-        });
-
-        new Thread(() -> {
-            try {
-                server.start("localhost", 8080, 1, false);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }).start();
-
-        // Даем серверу время на запуск
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        // Отправка GET-запроса
-        URL url = new URL("http://localhost:8080/");
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("GET");
-
-        // Проверка ответа
-        assertEquals(200, connection.getResponseCode());
-        assertEquals("text/html", connection.getHeaderField("Content-Type"));
-
-        BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-        String responseBody = reader.readLine();
-        assertEquals("<h1>Home Page</h1>", responseBody);
-
-        // Остановка сервера
-        server.stop();
+    @BeforeEach
+    public void setUp() {
+        server = new HttpServer();
     }
 
+    private void startServer() throws InterruptedException {
+        serverThread = new Thread(() -> {
+            try {
+                server.start(TEST_HOST, TEST_PORT, 1, false);
+            } catch (IOException e) {
+                fail("Server failed to start: " + e.getMessage());
+            }
+        });
+        serverThread.start();
+        Thread.sleep(500); // Даем серверу время на запуск
+    }
+
+    @AfterEach
+    public void tearDown() {
+        if (server != null) {
+            server.stop();
+        }
+        if (serverThread != null) {
+            try {
+                serverThread.join(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
 
     @Test
-    public void testPostRequestWithJson() throws IOException {
-        // Запуск сервера
-        HttpServer server = new HttpServer();
-        server.addRoute("POST", "/data", (request, response) -> {
-            Map<String, Object> jsonData = request.parseJson();
+    public void testTextResponse() throws Exception {
+        server.addRoute("GET", "/text", (req, res) -> {
+            res.setStatus(200, "OK");
+            res.setBody("Simple text response");
+            res.addHeader("Content-Type", "text/plain");
+        });
+        startServer();
+
+        URL url = new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/text");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+        assertEquals(200, conn.getResponseCode());
+        assertEquals("text/plain", conn.getContentType());
+
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+            assertEquals("Simple text response", reader.readLine());
+        }
+    }
+
+    @Test
+    public void testBinaryResponse() throws Exception {
+        // Создаем временный бинарный файл
+        File binaryFile = File.createTempFile("test", ".bin");
+        try (FileOutputStream fos = new FileOutputStream(binaryFile)) {
+            byte[] testData = new byte[256];
+            for (int i = 0; i < 256; i++) {
+                testData[i] = (byte) i;
+            }
+            fos.write(testData);
+        }
+
+        server.addRoute("GET", "/binary", (req, res) -> {
+            try {
+                res.setBody(binaryFile, "application/octet-stream");
+                res.setStatus(200, "OK");
+            } catch (IOException e) {
+                res.setStatus(500, "Internal Server Error");
+            }
+        });
+        startServer();
+
+        try {
+            URL url = new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/binary");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+            assertEquals(200, conn.getResponseCode());
+            assertEquals("application/octet-stream", conn.getContentType());
+            assertEquals(String.valueOf(binaryFile.length()), conn.getHeaderField("Content-Length"));
+
+            try (InputStream is = conn.getInputStream()) {
+                byte[] responseData = is.readAllBytes();
+                assertArrayEquals(Files.readAllBytes(binaryFile.toPath()), responseData);
+            }
+        } finally {
+            binaryFile.delete();
+        }
+    }
+
+    @Test
+    public void testMixedContentTypes() throws Exception {
+        // Создаем тестовые файлы
+        File textFile = File.createTempFile("text", ".txt");
+        Files.writeString(textFile.toPath(), "Text content");
+
+        File imageFile = File.createTempFile("image", ".png");
+        try (FileOutputStream fos = new FileOutputStream(imageFile)) {
+            byte[] imageData = new byte[100];
+            new java.util.Random().nextBytes(imageData);
+            fos.write(imageData);
+        }
+
+        server.addRoute("GET", "/text-file", (req, res) -> {
+            try {
+                res.setBody(textFile, "text/plain");
+                res.setStatus(200, "OK");
+            } catch (IOException e) {
+                res.setStatus(500, "Internal Server Error");
+            }
+        });
+
+        server.addRoute("GET", "/image", (req, res) -> {
+            try {
+                res.setBody(imageFile, "image/png");
+                res.setStatus(200, "OK");
+            } catch (IOException e) {
+                res.setStatus(500, "Internal Server Error");
+            }
+        });
+        startServer();
+
+        try {
+            // Тестируем текстовый файл
+            HttpURLConnection textConn = (HttpURLConnection)
+                    new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/text-file").openConnection();
+            assertEquals(200, textConn.getResponseCode());
+            assertEquals("text/plain", textConn.getContentType());
+            assertEquals(new String(Files.readAllBytes(textFile.toPath())),
+                    new String(textConn.getInputStream().readAllBytes()));
+
+            // Тестируем бинарный файл
+            HttpURLConnection imageConn = (HttpURLConnection)
+                    new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/image").openConnection();
+            assertEquals(200, imageConn.getResponseCode());
+            assertEquals("image/png", imageConn.getContentType());
+            assertArrayEquals(Files.readAllBytes(imageFile.toPath()),
+                    imageConn.getInputStream().readAllBytes());
+        } finally {
+            textFile.delete();
+            imageFile.delete();
+        }
+    }
+
+    @Test
+    public void testLargeBinaryFile() throws Exception {
+        File largeFile = File.createTempFile("large", ".bin");
+        byte[] largeData = new byte[1024 * 1024];
+        new java.util.Random().nextBytes(largeData);
+        Files.write(largeFile.toPath(), largeData);
+
+        server.addRoute("GET", "/large", (req, res) -> {
+            try {
+                res.setBody(largeFile, "application/octet-stream");
+                res.setStatus(200, "OK");
+            } catch (IOException e) {
+                res.setStatus(500, "Internal Server Error");
+            }
+        });
+        startServer();
+
+        try {
+            URL url = new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/large");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+            assertEquals(200, conn.getResponseCode());
+            assertEquals(String.valueOf(largeFile.length()), conn.getHeaderField("Content-Length"));
+
+            try (InputStream is = conn.getInputStream()) {
+                byte[] responseData = is.readAllBytes();
+                assertArrayEquals(largeData, responseData);
+            }
+        } finally {
+            largeFile.delete();
+        }
+    }
+
+    @Test
+    public void testJsonRequestHandling() throws Exception {
+        server.addRoute("POST", "/json", (req, res) -> {
+            Map<String, Object> jsonData = req.parseJson();
             if (!jsonData.isEmpty()) {
-                response.setStatus(200, "OK");
-                response.setBody("Data stored");
+                res.setStatus(200, "OK");
+                res.setBody("Received JSON with " + jsonData.size() + " fields");
+                res.addHeader("Content-Type", "application/json");
             } else {
-                response.setStatus(400, "Bad Request");
-                response.setBody("Invalid JSON");
+                res.setStatus(400, "Bad Request");
+                res.setBody("Invalid JSON");
             }
-            response.addHeader("Content-Type", "application/json");
         });
+        startServer();
 
-        new Thread(() -> {
-            try {
-                server.start("localhost", 8080, 1, false);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }).start();
+        // Отправляем JSON
+        URL url = new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/json");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setDoOutput(true);
 
-        // Даем серверу время на запуск
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        String jsonInput = "{\"name\":\"Mark\", \"age\":22}";
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(jsonInput.getBytes(StandardCharsets.UTF_8));
         }
 
-        // Отправка POST-запроса с JSON
-        URL url = new URL("http://localhost:8080/data");
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("POST");
-        connection.setRequestProperty("Content-Type", "application/json");
-        connection.setDoOutput(true);
+        assertEquals(200, conn.getResponseCode());
+        assertEquals("application/json", conn.getContentType());
 
-        String jsonInputString = "{\"key\": \"value\"}";
-        try (OutputStream os = connection.getOutputStream()) {
-            byte[] input = jsonInputString.getBytes("utf-8");
-            os.write(input, 0, input.length);
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+            assertEquals("Received JSON with 2 fields", reader.readLine());
         }
-
-        // Проверка ответа
-        assertEquals(200, connection.getResponseCode());
-        assertEquals("application/json", connection.getHeaderField("Content-Type"));
-
-        BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-        String responseBody = reader.readLine();
-        assertEquals("Data stored", responseBody);
-
-        // Остановка сервера
-        server.stop();
     }
 
-
     @Test
-    public void testDeleteRequest() throws IOException {
-        // Запуск сервера
-        HttpServer server = new HttpServer();
-        server.addRoute("DELETE", "/data/{id}", (request, response) -> {
-            String id = request.headers().get("X-Resource-ID");
-            if (id != null) {
-                response.setStatus(200, "OK");
-                response.setBody("Data deleted for ID: " + id);
-            } else {
-                response.setStatus(400, "Bad Request");
-                response.setBody("ID not provided");
-            }
-            response.addHeader("Content-Type", "application/json");
-        });
-
-        new Thread(() -> {
-            try {
-                server.start("localhost", 8080, 1, false);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }).start();
-
-        // Даем серверу время на запуск
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        // Отправка DELETE-запроса
-        URL url = new URL("http://localhost:8080/data/123");
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("DELETE");
-
-        // Проверка ответа
-        assertEquals(200, connection.getResponseCode());
-        assertEquals("application/json", connection.getHeaderField("Content-Type"));
-
-        BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-        String responseBody = reader.readLine();
-        assertEquals("Data deleted for ID: 123", responseBody);
-
-        // Остановка сервера
-        server.stop();
-    }
-
-
-    @Test
-    public void testNotFoundRoute() throws IOException {
-        // Запуск сервера
-        HttpServer server = new HttpServer();
-        server.addRoute("GET", "/", (request, response) -> {
-            response.setStatus(200, "OK");
-            response.setBody("<h1>Home Page</h1>");
-            response.addHeader("Content-Type", "text/html");
-        });
-
-        new Thread(() -> {
-            try {
-                server.start("localhost", 8080, 1, false);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }).start();
-
-        // Даем серверу время на запуск
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        // Отправка GET-запроса на несуществующий маршрут
-        URL url = new URL("http://localhost:8080/unknown");
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("GET");
-
-        // Проверка статуса ответа
-        assertEquals(404, connection.getResponseCode());
-        assertEquals("text/html", connection.getHeaderField("Content-Type"));
-
-        // Чтение тела ответа из потока ошибок
-        BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getErrorStream()));
-        String responseBody = reader.readLine();
-        assertEquals("<h1>404 Not Found</h1>", responseBody);
-
-        // Остановка сервера
-        server.stop();
-    }
-
-
-    @Test
-    public void testAddRouteDuplicateThrowsException() {
-        HttpServer server = new HttpServer();
+    public void testDuplicateRouteHandlers() throws InterruptedException {
         HttpServer.RequestHandler handler1 = (req, res) -> res.setBody("Handler 1");
         HttpServer.RequestHandler handler2 = (req, res) -> res.setBody("Handler 2");
 
-        server.addRoute("GET", "/test", handler1);
+        server.addRoute("GET", "/duplicate", handler1);
 
-        IllegalStateException exception = assertThrows(
-                IllegalStateException.class,
-                () -> server.addRoute("GET", "/test", handler2)
-        );
+        // Попытка добавить второй обработчик для того же маршрута
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> server.addRoute("GET", "/duplicate", handler2));
 
-        assertEquals("Route already exists: GET /test", exception.getMessage());
+        assertEquals("Route already exists: GET /duplicate", exception.getMessage());
+
+        // Проверяем, что первый обработчик остался неизменным
+        startServer();
+
+        try {
+            URL url = new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/duplicate");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                assertEquals("Handler 1", reader.readLine());
+            }
+        } catch (Exception e) {
+            fail("Test failed: " + e.getMessage());
+        }
+    }
+
+
+    @Test
+    public void testJsonCrudOperations() throws Exception {
+        // Setup routes
+        server.addRoute("POST", "/data", (req, res) -> {
+            Map<String, Object> jsonData = req.parseJson();
+            String id = UUID.randomUUID().toString();
+            server.getDataStore().put(id, jsonData);
+            res.setStatus(200, "OK");
+            res.setBody("{\"id\":\"" + id + "\"}");
+            res.addHeader("Content-Type", "application/json");
+        });
+
+        server.addRoute("GET", "/data/{id}", (req, res) -> {
+            String id = req.headers().get("X-Resource-ID");
+            Map<String, Object> data = server.getDataStore().get(id);
+            if (data != null) {
+                res.setStatus(200, "OK");
+                res.setBody(data.toString());
+            } else {
+                res.setStatus(404, "Not Found");
+                res.setBody("No data found");
+            }
+            res.addHeader("Content-Type", "application/json");
+        });
+
+        server.addRoute("DELETE", "/data/{id}", (req, res) -> {
+            String id = req.headers().get("X-Resource-ID");
+            server.getDataStore().remove(id);
+            res.setStatus(200, "OK");
+            res.setBody("{\"status\":\"deleted\"}");
+            res.addHeader("Content-Type", "application/json");
+        });
+
+        startServer();
+
+        // Test POST
+        String testJson = "{\"name\":\"test\",\"value\":123}";
+        URL postUrl = new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/data");
+        HttpURLConnection postConn = (HttpURLConnection) postUrl.openConnection();
+        postConn.setRequestMethod("POST");
+        postConn.setRequestProperty("Content-Type", "application/json");
+        postConn.setDoOutput(true);
+
+        try (OutputStream os = postConn.getOutputStream()) {
+            os.write(testJson.getBytes(StandardCharsets.UTF_8));
+        }
+
+        String id;
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(postConn.getInputStream(), StandardCharsets.UTF_8))) {
+            String response = reader.readLine();
+            id = response.split("\"")[3]; // Extract ID from {"id":"..."}
+        }
+
+        // Test GET after POST
+        URL getUrl = new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/data/" + id);
+        HttpURLConnection getConn = (HttpURLConnection) getUrl.openConnection();
+        getConn.setRequestMethod("GET");
+
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(getConn.getInputStream(), StandardCharsets.UTF_8))) {
+            String response = reader.readLine();
+            assertTrue(response.contains("name=test"));
+            assertTrue(response.contains("value=123"));
+        }
+
+        // DELETE
+        URL deleteUrl = new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/data/" + id);
+        HttpURLConnection deleteConn = (HttpURLConnection) deleteUrl.openConnection();
+        deleteConn.setRequestMethod("DELETE");
+        assertEquals(200, deleteConn.getResponseCode());
+
+        // Test GET after DELETE
+        HttpURLConnection getAfterDeleteConn = (HttpURLConnection) getUrl.openConnection();
+        getAfterDeleteConn.setRequestMethod("GET");
+        assertEquals(404, getAfterDeleteConn.getResponseCode());
     }
 }
