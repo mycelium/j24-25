@@ -353,60 +353,56 @@ public class JsonReader implements JsonInteractor {
 
 
     /**
-     * Reads JSON file to Map of (String, Object). Check {@link #fromJsonToMap(String)} method for more details
+     * Reads JSON file into a Map of (String, Object).
+     *
      * @param jsonFile JSON file
      * @return filled Map
-     * @throws IOException when I/O error occurs while reading file
-     * (check {@link JsonInteractor#jsonFileToJsonString(File)})
-     * @throws WrongJsonStringFormatException when JSON string has wrong format (check {@link #fromJsonToMap(String)})
+     * @throws IOException                        when I/O error occurs while reading file
+     * @throws WrongJsonStringFormatException     when JSON string has wrong format (check {@link #fromJsonToMap(String)})
      */
-    static public Map<String, Object> fromJsonToMap(File jsonFile) throws IOException, WrongJsonStringFormatException {
-
-        return fromJsonToMap(JsonInteractor.jsonFileToJsonString(jsonFile));
-
+    public static Map<String, Object> fromJsonToMap(File jsonFile)
+            throws IOException, WrongJsonStringFormatException {
+        String jsonString = JsonInteractor.jsonFileToJsonString(jsonFile);
+        return fromJsonToMap(jsonString);
     }
 
     /**
-     * Creates the new instance of the specified class {@code fillingClass} and fills it with values from JSON file.
-     * Check {@link #fromJsonNewObject(String, Class)} method for more details
-     * @param jsonFile JSON file
+     * Creates a new instance of the specified class and fills it with values from JSON file.
+     *
+     * @param jsonFile     JSON file
      * @param fillingClass the class for which the instance is being created
+     * @param <T>          type of filling class
      * @return the instance of the specified class
-     * @param <T> type of filling class
-     * @implNote For more details about exceptions check {@link #fromJsonNewObject(String, Class)} and
-     * {@link JsonInteractor#jsonFileToJsonString(File)} methods
+     * @throws IOException                        when I/O error occurs while reading file
+     * @throws WrongJsonStringFormatException     when JSON string has wrong format
+     * @throws NoSuchFieldException               if there is no such field in {@code fillingClass}
+     * @throws InstantiationException             if {@code fillingClass} is abstract
+     * @throws IllegalAccessException             if it cannot get access to {@code fillingClass}'s constructor
      */
-    static public <T> T fromJsonNewObject(File jsonFile, Class<T> fillingClass) throws
-            IOException,
-            WrongJsonStringFormatException,
-            NoSuchFieldException,
-            InstantiationException,
-            IllegalAccessException {
-
-        return fromJsonNewObject(JsonInteractor.jsonFileToJsonString(jsonFile), fillingClass);
-
+    public static <T> T fromJsonNewObject(File jsonFile, Class<T> fillingClass)
+            throws IOException, WrongJsonStringFormatException, NoSuchFieldException,
+            InstantiationException, IllegalAccessException {
+        String jsonString = JsonInteractor.jsonFileToJsonString(jsonFile);
+        return fromJsonNewObject(jsonString, fillingClass);
     }
 
     /**
-     * Fills, if it is possible, the {@code targetObject} with values from JSON file.
-     * Check {@link #fromJsonToObject(String, Object)} method for more details
-     * @param jsonFile JSON file
-     * @param targetObject object that needed to be filled
-     * @implNote For more details about exceptions check {@link #fromJsonToObject(String, Object)} and
-     * {@link JsonInteractor#jsonFileToJsonString(File)} methods
+     * Fills, if possible, the {@code targetObject} with values from JSON file.
+     *
+     * @param jsonFile     JSON file
+     * @param targetObject object that needs to be filled
+     * @throws IOException                        when I/O error occurs while reading file
+     * @throws WrongJsonStringFormatException     when JSON string has wrong format
+     * @throws NoSuchFieldException               if there is no such field in {@code targetObject}
+     * @throws InvocationTargetException          if a nested object's constructor throws an exception
+     * @throws IllegalAccessException             if it cannot get access to {@code targetObject}'s field
+     * @throws NoSuchMethodException              if there is no default constructor of a nested object
+     * @throws InstantiationException             if a nested object's class is abstract
      */
-    static public void fromJsonToObject(File jsonFile, Object targetObject) throws
-            WrongJsonStringFormatException,
-            IOException,
-            NoSuchFieldException,
-            InvocationTargetException,
-            IllegalAccessException,
-            NoSuchMethodException,
-            InstantiationException {
-
-        fromJsonToObject(JsonInteractor.jsonFileToJsonString(jsonFile), targetObject);
-
+    public static void fromJsonToObject(File jsonFile, Object targetObject)
+            throws IOException, WrongJsonStringFormatException, NoSuchFieldException,
+            InvocationTargetException, IllegalAccessException, NoSuchMethodException, InstantiationException {
+        String jsonString = JsonInteractor.jsonFileToJsonString(jsonFile);
+        fromJsonToObject(jsonString, targetObject);
     }
-
-
 }
