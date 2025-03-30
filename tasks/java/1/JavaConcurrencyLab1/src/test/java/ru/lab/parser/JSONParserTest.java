@@ -61,4 +61,5 @@ public class JSONParserTest {
         System.out.println(JSONParser.readJsonToEntity("[\"apple\", \"banana\", \"cherry\"]", List.class));
         Assertions.assertEquals(JSONParser.readJsonToEntity("[\"apple\", \"banana\", \"cherry\"]", List.class), list);
     }
+
 }

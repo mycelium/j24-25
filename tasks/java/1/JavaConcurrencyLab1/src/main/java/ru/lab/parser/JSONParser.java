@@ -10,58 +10,65 @@ import java.util.stream.IntStream;
 
 public class JSONParser {
 
-    private static <T> T fillClazzWithMap(Map<String, Object> map, Class<T> clazz){
-        try{
+    private static <T> T fillClazzWithMap(Map<String, Object> map, Class<T> clazz) {
+        try {
             List<Object> arguments = new ArrayList<>();
             Constructor<?>[] constructors = clazz.getDeclaredConstructors();
-            for (Field field : clazz.getDeclaredFields()) {
-                String fieldName = field.getName();
-                if (map.containsKey(fieldName)) {
-                    Class<?> fieldType = field.getType();
-                    Object value = map.get(fieldName);
 
-                    // Если значение является Map и поле не является Map, рекурсивно преобразуем его в объект
-                    if (value instanceof Map && !Map.class.isAssignableFrom(fieldType)) {
-                        value = fillClazzWithMap((Map<String, Object>) value, fieldType);
-                    }
+            // Обходим все поля класса, включая поля родительских классов
+            Class<?> currentClass = clazz;
+            while (currentClass != null && currentClass != Object.class) {
+                for (Field field : currentClass.getDeclaredFields()) {
+                    String fieldName = field.getName();
+                    if (map.containsKey(fieldName)) {
+                        Class<?> fieldType = field.getType();
+                        Object value = map.get(fieldName);
 
-                    // Если значение является List, обрабатываем его элементы
-                    if (value instanceof List<?> list) {
-                        if (!list.isEmpty() && list.get(0) instanceof Map) {
-                            Class<?> listType = (Class<?>) ((java.lang.reflect.ParameterizedType) field.getGenericType())
-                                    .getActualTypeArguments()[0];
-                            List<Object> typedList = (List<Object>) list;
-                            typedList.replaceAll(o -> fillClazzWithMap((Map<String, Object>) o, listType));
-                        } else if (fieldType.isArray()){
-                            Class<?> componentType = list.isEmpty() ? Object.class : list.get(0).getClass();
+                        // Если значение является Map и поле не является Map, рекурсивно преобразуем его в объект
+                        if (value instanceof Map && !Map.class.isAssignableFrom(fieldType)) {
+                            value = fillClazzWithMap((Map<String, Object>) value, fieldType);
+                        }
 
-                            // Создаём массив нужного типа
-                            Object array = Array.newInstance(componentType, list.size());
+                        // Если значение является List, обрабатываем его элементы
+                        if (value instanceof List<?> list) {
+                            if (!list.isEmpty() && list.get(0) instanceof Map) {
+                                Class<?> listType = (Class<?>) ((ParameterizedType) field.getGenericType())
+                                        .getActualTypeArguments()[0];
+                                List<Object> typedList = (List<Object>) list;
+                                typedList.replaceAll(o -> fillClazzWithMap((Map<String, Object>) o, listType));
+                            } else if (fieldType.isArray()) {
+                                Class<?> componentType = list.isEmpty() ? Object.class : list.get(0).getClass();
 
-                            // Заполняем массив элементами из списка
-                            for (int i = 0; i < list.size(); i++) {
-                                Array.set(array, i, list.get(i));
+                                // Создаём массив нужного типа
+                                Object array = Array.newInstance(componentType, list.size());
+
+                                // Заполняем массив элементами из списка
+                                for (int i = 0; i < list.size(); i++) {
+                                    Array.set(array, i, list.get(i));
+                                }
+                                value = array;
                             }
-                            value = array;
-                        }
-                        // Если fieldType является Iterable (например, HashSet, ArrayList и т.д.)
-                        else if (Iterable.class.isAssignableFrom(fieldType)) {
-                            // Создаём новый экземпляр Iterable (например, HashSet)
-                            Iterable<?> iterable = createIterableFromList(fieldType, list);
+                            // Если fieldType является Iterable (например, HashSet, ArrayList и т.д.)
+                            else if (Iterable.class.isAssignableFrom(fieldType)) {
+                                // Создаём новый экземпляр Iterable (например, HashSet)
+                                Iterable<?> iterable = createIterableFromList(fieldType, list);
 
-                            // Присваиваем значение полю
-                            value = iterable;
+                                // Присваиваем значение полю
+                                value = iterable;
+                            }
                         }
+
+                        arguments.add(value);
                     }
-
-                    arguments.add(value);
                 }
+                currentClass = currentClass.getSuperclass();
             }
-            for (Constructor<?> constructor: constructors){
-                try{
+
+            for (Constructor<?> constructor: constructors) {
+                try {
                     constructor.setAccessible(true);
                     return (T) constructor.newInstance(arguments.toArray());
-                } catch (Exception e){
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -434,7 +441,7 @@ public class JSONParser {
      * @return JSON-строка, представляющая объект.
      */
     public static <T> String convertEntityToJSON(T object) {
-        if(object == null){
+        if (object == null) {
             return "null";
         } else if (object instanceof String) {
             return "\"" + escapeJson((String) object) + "\"";
@@ -446,16 +453,21 @@ public class JSONParser {
             return toJsonArray(arrayToIterable(object));
         } else if (isBoxed(object)) {
             return String.valueOf(object);
-        }else {
+        } else {
             Map<String, Object> mappedJavaObject = new HashMap<>();
 
-            for(var field: object.getClass().getDeclaredFields()){
-                field.setAccessible(true);
-                try{
-                    mappedJavaObject.put(field.getName(), field.get(object));
-                } catch (IllegalAccessException exc){
-                    exc.printStackTrace();
+            // Обходим все поля класса, включая поля родительских классов
+            Class<?> currentClass = object.getClass();
+            while (currentClass != null && currentClass != Object.class) {
+                for (Field field : currentClass.getDeclaredFields()) {
+                    field.setAccessible(true);
+                    try {
+                        mappedJavaObject.put(field.getName(), field.get(object));
+                    } catch (IllegalAccessException exc) {
+                        exc.printStackTrace();
+                    }
                 }
+                currentClass = currentClass.getSuperclass();
             }
             return toJsonString(mappedJavaObject);
         }
