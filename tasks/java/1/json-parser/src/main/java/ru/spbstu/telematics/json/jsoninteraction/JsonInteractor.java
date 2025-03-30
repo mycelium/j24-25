@@ -1,7 +1,9 @@
 package ru.spbstu.telematics.json.jsoninteraction;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Interface for interacting with JSONs
@@ -35,40 +37,18 @@ public interface JsonInteractor {
     }
 
     /**
-     * Reads file into string
-     * @param jsonFile opening file
-     * @return string that contains content of the jsonFile
+     * Reads file into string.
+     *
+     * @param jsonFile file to read
+     * @return string that contains the content of the jsonFile
      * @throws IOException when I/O error occurs while reading file
      */
     static String jsonFileToJsonString(File jsonFile) throws IOException {
-        if (jsonFile == null) {
-            throw new NullPointerException("The file is null");
+        Objects.requireNonNull(jsonFile, "The file is null");
+        if (!jsonFile.exists() || !jsonFile.isFile()) {
+            throw new FileNotFoundException("The file does not exist or is not a file: " + jsonFile.getAbsolutePath());
         }
 
-        // Проверка существования файла
-        if (!jsonFile.exists()) {
-            throw new FileNotFoundException("The file does not exist");
-        }
-
-        InputStream inputJsonStream = null;
-        try {
-            // Чтение JSON-файла
-            inputJsonStream = new FileInputStream(jsonFile);
-            String jsonString = new String(inputJsonStream.readAllBytes());
-
-            return jsonString;
-        } catch (IOException e) {
-            throw new IOException("I/O error occurs reading from the input JSON stream", e);
-        } finally {
-            // Закрытие потока
-            if (inputJsonStream != null) {
-                try {
-                    inputJsonStream.close();
-                } catch (IOException e) {
-                    System.err.println("I/O error occurs closing input JSON stream");
-                    e.printStackTrace();
-                }
-            }
-        }
+        return Files.readString(jsonFile.toPath());
     }
 }
