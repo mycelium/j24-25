@@ -1,3 +1,4 @@
+
 package org.example;
 
 import java.lang.reflect.Array;
@@ -5,24 +6,18 @@ import java.lang.reflect.Field;
 import java.util.*;
 
 /**
- * Пример упрощённой библиотеки для работы с JSON:
  * 1) parse(String json) -> Object
  * 2) parse(String json, Class<T> clazz) -> T
  * 3) parseToMap(String json) -> Map<String, Object>
  * 4) toJson(Object obj) -> String
- *
+ * <p>
  * Поддерживается:
- *  - Примитивы и их объектные оболочки
- *  - Строки
- *  - Массивы
- *  - Списки (List)
- *  - Map
- *  - Вложенные объекты
- *
- * Не учтено:
- *  - Полная обработка всех ошибок синтаксиса JSON
- *  - Поддержка циклических зависимостей
- *  - Работа с нестандартными типами, которые невозможно отобразить в JSON
+ * - Примитивы и их объектные оболочки
+ * - Строки
+ * - Массивы
+ * - Списки (List)
+ * - Map
+ * - Вложенные объекты
  */
 public class SimpleJson {
 
@@ -51,50 +46,38 @@ public class SimpleJson {
         return null;
     }
 
-    /**
-     * Разбирает JSON-строку в объект указанного класса.
-     * Для инициализации полей используется reflection.
-     */
+
     public static <T> T parse(String json, Class<T> clazz) {
         Object root = parse(json);
         return convertValue(root, clazz);
     }
 
-    /**
-     * Преобразует Java-объект (включая коллекции и Map)
-     * в корректную JSON-строку.
-     */
+
     public static String toJson(Object obj) {
         StringBuilder sb = new StringBuilder();
         serializeValue(obj, sb);
         return sb.toString();
     }
 
-    // ---------------------------------------------------------
-    // Вспомогательные методы парсинга -> объект нужного класса
-    // ---------------------------------------------------------
 
     /**
      * Универсальный метод преобразования "сырых" JSON-данных (Map, List, String, Number, Boolean)
      * в объект нужного типа через reflection.
      */
     @SuppressWarnings("unchecked")
-     static <T> T convertValue(Object rawValue, Class<T> targetType) {
+    static <T> T convertValue(Object rawValue, Class<T> targetType) {
         if (rawValue == null) {
             return null;
         }
 
-        // Если целевой тип - String
         if (targetType == String.class) {
             return (T) String.valueOf(rawValue);
         }
 
-        // Если целевой тип - Number/примитив
         if (isNumericType(targetType) && rawValue instanceof Number) {
             return convertNumber((Number) rawValue, targetType);
         }
 
-        // Если целевой тип - Boolean
         if (targetType == Boolean.class || targetType == boolean.class) {
             if (rawValue instanceof Boolean) {
                 return (T) rawValue;
@@ -102,19 +85,14 @@ public class SimpleJson {
             return (T) Boolean.valueOf(String.valueOf(rawValue));
         }
 
-        // Если это коллекция (List)
         if (List.class.isAssignableFrom(targetType)) {
-            // Пытаемся привести к List
             if (rawValue instanceof List) {
-                // Допустим, что целевым типом всегда будет List<Object> (упрощение)
                 return (T) rawValue;
             }
-            return null; // или выбросить исключение
+            return null;
         }
 
-        // Если это массив
         if (targetType.isArray()) {
-            // Считаем, что rawValue это List
             if (rawValue instanceof List) {
                 List<?> rawList = (List<?>) rawValue;
                 Class<?> componentType = targetType.getComponentType();
@@ -125,19 +103,20 @@ public class SimpleJson {
                 }
                 return (T) array;
             }
-            return null; // или бросаем исключение
+            return null;
         }
 
-        // Если это Map, а целевой тип - класс (оба не примитивы)
+
         if (rawValue instanceof Map && !targetType.isPrimitive()) {
             try {
                 T instance = targetType.getDeclaredConstructor().newInstance();
                 Map<String, Object> map = (Map<String, Object>) rawValue;
-                for (Field field : targetType.getDeclaredFields()) {
+
+
+                for (Field field : getAllFields(targetType)) {
                     field.setAccessible(true);
                     Object valueInMap = map.get(field.getName());
                     if (valueInMap != null) {
-                        // Определяем тип поля
                         Class<?> fieldType = field.getType();
                         Object fieldValue = convertValue(valueInMap, fieldType);
                         field.set(instance, fieldValue);
@@ -149,13 +128,10 @@ public class SimpleJson {
             }
         }
 
-        // Иначе, попробуем простое приведение (например, если targetType - Object)
         return (T) rawValue;
     }
 
-    /**
-     * Проверка, является ли класс числовым примитивом или обёрткой.
-     */
+
     private static boolean isNumericType(Class<?> type) {
         if (type.isPrimitive()) {
             return type == int.class
@@ -168,9 +144,7 @@ public class SimpleJson {
         return Number.class.isAssignableFrom(type);
     }
 
-    /**
-     * Преобразование Number в нужный числовой тип.
-     */
+
     @SuppressWarnings("unchecked")
     private static <T> T convertNumber(Number number, Class<T> targetType) {
         if (targetType == Integer.class || targetType == int.class) {
@@ -191,13 +165,8 @@ public class SimpleJson {
         if (targetType == Byte.class || targetType == byte.class) {
             return (T) Byte.valueOf(number.byteValue());
         }
-        // Если не попало никуда - вернём исходное
         return (T) number;
     }
-
-    // ---------------------------------------------------------
-    // serialize (Object -> JSON)
-    // ---------------------------------------------------------
 
     private static void serializeValue(Object value, StringBuilder sb) {
         if (value == null) {
@@ -235,9 +204,9 @@ public class SimpleJson {
             return;
         }
 
-        // Если это обычный объект (пользовательский класс)
         serializeObject(value, sb);
     }
+
 
     private static void serializeCollection(Collection<?> collection, StringBuilder sb) {
         sb.append("[");
@@ -278,15 +247,12 @@ public class SimpleJson {
         sb.append("}");
     }
 
-    /**
-     * Сериализует поля объекта в JSON-объект.
-     */
-     static void serializeObject(Object obj, StringBuilder sb) {
+
+    static void serializeObject(Object obj, StringBuilder sb) {
         sb.append("{");
-        Field[] fields = obj.getClass().getDeclaredFields();
+        Field[] fields = getAllFields(obj.getClass());
         boolean first = true;
         for (Field field : fields) {
-            // сериализуем все поля
             if (!first) {
                 sb.append(",");
             }
@@ -303,18 +269,25 @@ public class SimpleJson {
         sb.append("}");
     }
 
-    /**
-     * Экранирование спецсимволов в строке (упрощённая версия).
-     */
-    private static String escapeString(String str) {return str.replace("\\", "\\\\")
-            .replace("\"", "\\\"");
+
+    private static Field[] getAllFields(Class<?> clazz) {
+        List<Field> result = new ArrayList<>();
+        while (clazz != null && clazz != Object.class) {
+            Field[] declaredFields = clazz.getDeclaredFields();
+            Collections.addAll(result, declaredFields);
+            clazz = clazz.getSuperclass();
+        }
+        return result.toArray(new Field[0]);
     }
 
-    // ---------------------------------------------------------
-    // Parser (JSON -> Object)
-    // ---------------------------------------------------------
 
-     static class Parser {
+    private static String escapeString(String str) {
+        return str.replace("\\", "\\\\")
+                .replace("\"", "\\\"");
+    }
+
+
+    static class Parser {
         private final String json;
         private int pos;
         private final int length;
@@ -325,9 +298,7 @@ public class SimpleJson {
             this.length = json.length();
         }
 
-        /**
-         * Метод парсит любое JSON-значение: объект, массив, строку, число, boolean, null.
-         */
+
         Object parseValue() {
             skipWhitespace();
             if (pos >= length) {
@@ -400,9 +371,7 @@ public class SimpleJson {
             return list;
         }
 
-        /**
-         * Парсинг строки: "..."
-         */
+
         private String parseString() {
             expectChar('"');
             StringBuilder sb = new StringBuilder();
@@ -415,29 +384,15 @@ public class SimpleJson {
                     if (pos < length) {
                         char next = json.charAt(pos++);
                         switch (next) {
-                            case '"':
-                            case '\\':
-                            case '/':
-                                sb.append(next);
-                                break;case 'b':
-                                sb.append('\b');
-                                break;
-                            case 'f':
-                                sb.append('\f');
-                                break;
-                            case 'n':
-                                sb.append('\n');
-                                break;
-                            case 'r':
-                                sb.append('\r');
-                                break;
-                            case 't':
-                                sb.append('\t');
-                                break;
-                            default:
-                                // иначе просто добавляем как есть
+                            case '"', '\\', '/' -> sb.append(next);
+                            case 'b' -> sb.append('\b');
+                            case 'f' -> sb.append('\f');
+                            case 'n' -> sb.append('\n');
+                            case 'r' -> sb.append('\r');
+                            case 't' -> sb.append('\t');
+                            default -> {
                                 sb.append('\\').append(next);
-                                break;
+                            }
                         }
                     }
                 } else {
@@ -447,10 +402,7 @@ public class SimpleJson {
             return sb.toString();
         }
 
-        /**
-         * Парсинг числового значения (упрощённо).
-         * Предполагаем, что это может быть int/double/long и т.д.
-         */
+
         private Number parseNumber() {
             int start = pos;
             while (pos < length) {
@@ -463,32 +415,26 @@ public class SimpleJson {
                 }
             }
             String numberStr = json.substring(start, pos);
-            // если есть точка или экспонента - double, иначе Long
             if (numberStr.contains(".") || numberStr.contains("e") || numberStr.contains("E")) {
                 try {
                     return Double.valueOf(Double.parseDouble(numberStr));
                 } catch (NumberFormatException e) {
-                    // fallback
                     return Double.valueOf(0.0);
                 }
             } else {
                 try {
                     long longValue = Long.parseLong(numberStr);
-                    // Если в диапазоне int
                     if (longValue <= Integer.MAX_VALUE && longValue >= Integer.MIN_VALUE) {
                         return Integer.valueOf((int) longValue);
                     }
                     return Long.valueOf(longValue);
                 } catch (NumberFormatException e) {
-                    // fallback
                     return Long.valueOf(0L);
                 }
             }
         }
 
-        /**
-         * Парсинг boolean (true/false).
-         */
+
         private Boolean parseBoolean() {
             if (json.startsWith("true", pos)) {
                 pos += 4;
@@ -500,9 +446,7 @@ public class SimpleJson {
             return null;
         }
 
-        /**
-         * Парсинг null.
-         */
+
         private Object parseNull() {
             if (json.startsWith("null", pos)) {
                 pos += 4;

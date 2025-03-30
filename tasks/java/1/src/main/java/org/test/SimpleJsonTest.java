@@ -1,19 +1,20 @@
 package org.test;
+
 import org.example.SimpleJson;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
 import java.util.*;
+
 public class SimpleJsonTest {
 
     /**
      * Тестовый класс для проверки десериализации.
      */
-
     public static class UserTest {
         public String name;
         public int age;
         public boolean isActive;
-        // Пример необязательных полей
         public Double salary;
         public String[] tags;
 
@@ -34,6 +35,26 @@ public class SimpleJsonTest {
             this.tags = tags;
         }
     }
+
+
+    public static class SuperUserTest extends UserTest {
+        public String role;
+
+        public SuperUserTest() {
+            super();
+        }
+
+        public SuperUserTest(String name, int age, boolean isActive, String role) {
+            super(name, age, isActive);
+            this.role = role;
+        }
+
+        public SuperUserTest(String name, int age, boolean isActive, Double salary, String[] tags, String role) {
+            super(name, age, isActive, salary, tags);
+            this.role = role;
+        }
+    }
+
     /**
      * Тестирует parseToMap на простом JSON-объекте.
      */
@@ -62,8 +83,7 @@ public class SimpleJsonTest {
         Map<String, Object> map = SimpleJson.parseToMap(json);
 
         Assertions.assertNotNull(map, "Результат не должен быть null");
-        Assertions.assertEquals("Developers", map.get("team"));// String
-
+        Assertions.assertEquals("Developers", map.get("team"));
         @SuppressWarnings("unchecked")
         List<Object> members = (List<Object>) map.get("members");
         Assertions.assertEquals(2, members.size());
@@ -92,7 +112,8 @@ public class SimpleJsonTest {
 
         Assertions.assertNotNull(user, "Сконвертированный объект не должен быть null");
         Assertions.assertEquals("Bob", user.name);
-        Assertions.assertEquals(25, user.age);Assertions.assertFalse(user.isActive);
+        Assertions.assertEquals(25, user.age);
+        Assertions.assertFalse(user.isActive);
     }
 
     /**
@@ -123,7 +144,6 @@ public class SimpleJsonTest {
         UserTest user = new UserTest("Alice", 30, true);
         String json = SimpleJson.toJson(user);
 
-        // Должны присутствовать ключевые поля в JSON-строке
         Assertions.assertTrue(json.contains("\"name\":\"Alice\""), "JSON должен содержать поле name");
         Assertions.assertTrue(json.contains("\"age\":30"), "JSON должен содержать поле age");
         Assertions.assertTrue(json.contains("\"isActive\":true"), "JSON должен содержать поле isActive");
@@ -140,10 +160,8 @@ public class SimpleJsonTest {
 
         String json = SimpleJson.toJson(users);
 
-        // Ожидаем, что это будет JSON-массив
         Assertions.assertTrue(json.startsWith("["), "JSON должен начинаться с [");
         Assertions.assertTrue(json.endsWith("]"), "JSON должен заканчиваться на ]");
-        // Проверим наличие данных
         Assertions.assertTrue(json.contains("\"name\":\"Tom\""));
         Assertions.assertTrue(json.contains("\"age\":40"));
         Assertions.assertTrue(json.contains("\"isActive\":false"));
@@ -153,23 +171,21 @@ public class SimpleJsonTest {
         Assertions.assertTrue(json.contains("\"isActive\":true"));
     }
 
-    /**
-     * Тест "туда и обратно": сериализация в JSON -> десериализация.
-     * Проверяем, что данные сохраняются без искажений.
-     */
-    @Test
-    public void testRoundTrip() {
-        UserTest original = new UserTest("Diana", 32, true, Double.valueOf(999.99), new String[]{"dev","admin"});
-        String json = SimpleJson.toJson(original);
-        UserTest parsed = SimpleJson.parse(json, UserTest.class);
+/**
+ * Тест "туда и обратно": сериализация в JSON -> десериализация.
+ * Проверяем, что данные сохраняются без искажений */
+@Test
+public void testRoundTrip() {
+    UserTest original = new UserTest("Diana", 32, true, Double.valueOf(999.99), new String[]{"dev","admin"});
+    String json = SimpleJson.toJson(original);
+    UserTest parsed = SimpleJson.parse(json, UserTest.class);
 
-        // Проверка соответствия полей
-        Assertions.assertEquals("Diana", parsed.name);
-        Assertions.assertEquals(32, parsed.age);
-        Assertions.assertTrue(parsed.isActive);
-        Assertions.assertEquals(999.99, parsed.salary);
-        Assertions.assertArrayEquals(new String[]{"dev", "admin"}, parsed.tags);
-    }
+    Assertions.assertEquals("Diana", parsed.name);
+    Assertions.assertEquals(32, parsed.age);
+    Assertions.assertTrue(parsed.isActive);
+    Assertions.assertEquals(999.99, parsed.salary);
+    Assertions.assertArrayEquals(new String[]{"dev", "admin"}, parsed.tags);
+}
 
     /**
      * Тестирует parse(String) в качестве "сырых" данных
@@ -200,5 +216,31 @@ public class SimpleJsonTest {
 
         String generated = SimpleJson.toJson(null);
         Assertions.assertEquals("null", generated, "toJson(null) должно вернуть 'null'");
+    }
+
+
+
+    @Test
+    public void testSuperClassFieldsSerialization() {
+        SuperUserTest superUser = new SuperUserTest("Ivan", 35, true, 2000.0, new String[]{"java", "json"}, "Admin");
+
+        String json = SimpleJson.toJson(superUser);
+
+        Assertions.assertTrue(json.contains("\"name\":\"Ivan\""), "JSON должен содержать поле name");
+        Assertions.assertTrue(json.contains("\"age\":35"), "JSON должен содержать поле age");
+        Assertions.assertTrue(json.contains("\"isActive\":true"), "JSON должен содержать поле isActive");
+        Assertions.assertTrue(json.contains("\"salary\":2000.0"), "JSON должен содержать поле salary");
+        Assertions.assertTrue(json.contains("\"tags\":[\"java\",\"json\"]"), "JSON должен содержать теги");
+
+        Assertions.assertTrue(json.contains("\"role\":\"Admin\""), "JSON должен содержать поле role");
+
+        SuperUserTest parsed = SimpleJson.parse(json, SuperUserTest.class);
+
+        Assertions.assertEquals("Ivan", parsed.name);
+        Assertions.assertEquals(35, parsed.age);
+        Assertions.assertTrue(parsed.isActive);
+        Assertions.assertEquals(2000.0, parsed.salary);
+        Assertions.assertArrayEquals(new String[]{"java", "json"}, parsed.tags);
+        Assertions.assertEquals("Admin", parsed.role);
     }
 }
