@@ -195,16 +195,16 @@ public class JsonParser {
 
     private static Collection<Object> createCollectionInstance(Class<?> collectionType) {
         if (collectionType.isInterface()) {
-            // Для интерфейсов стандартные реализации
-            if (Set.class.isAssignableFrom(collectionType)) {
-                return new HashSet<>();
-            } else if (List.class.isAssignableFrom(collectionType)) {
-                return new ArrayList<>();
-            } else {
-                throw new IllegalArgumentException("Unsupported collection interface: " + collectionType);
-            }
+            return switch (collectionType) {
+                case Class<?> c when SortedSet.class.isAssignableFrom(c) -> new TreeSet<>();
+                case Class<?> c when Set.class.isAssignableFrom(c) -> new HashSet<>();
+                case Class<?> c when Deque.class.isAssignableFrom(c) -> new LinkedList<>();
+                case Class<?> c when Queue.class.isAssignableFrom(c) -> new LinkedList<>();
+                case Class<?> c when List.class.isAssignableFrom(c) -> new ArrayList<>();
+                default -> throw new IllegalArgumentException(
+                        "Unsupported collection interface: " + collectionType);
+            };
         } else {
-            // Для конкретных классов создаем экземпляр
             try {
                 return (Collection<Object>) collectionType.getDeclaredConstructor().newInstance();
             } catch (Exception e) {
