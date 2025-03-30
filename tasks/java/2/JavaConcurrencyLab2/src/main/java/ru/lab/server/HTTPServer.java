@@ -98,16 +98,23 @@ public class HTTPServer {
     }
 
     // Record classes for better request/response handling
-    record HttpRequest(MethodType method, String path,
+    public record HttpRequest(MethodType method, String path,
                        Map<String, String> headers, String body) {}
 
-    record HttpResponse(int statusCode, String statusMessage,
-                        Map<String, String> headers, Object body) {
+    public static class HttpResponse{
 
-        public void addHeader(String name, String value) {
-            this.headers.put(name, value);
+        public int statusCode;
+        public String statusMessage;
+        public Map<String, String> headers;
+        public Object body;
+
+        public HttpResponse(int statusCode, String statusMessage,
+                            Map<String, String> headers, Object body){
+            this.statusCode = statusCode;
+            this.statusMessage = statusMessage;
+            this.headers = Objects.requireNonNullElseGet(headers, Map::of);
+            this.body = body;
         }
-
     }
 
     /**
@@ -174,7 +181,7 @@ public class HTTPServer {
     public <Response> void registerGetMethod(
             String path,
             Class<Response> responseType,
-            BiFunction<Map<String, String>, Map<String, String>, Response> listener
+            BiFunction<Map<String, String>, Map<String, String>, HttpResponse> listener
     ){
         registerListener(MethodType.GET, path,
             new UriListener(path, MethodType.GET, null, responseType, listener, logger, objectMapper));
@@ -188,13 +195,13 @@ public class HTTPServer {
      * @param responseType The type of object to be returned in the response.
      * @param listener     The function to be called to handle the request.
      * @param <Body>       The type of the request body.
-     * @param <Response>   The type of the response.
+     * @param <Response>   The type of the response body.
      */
     public <Body, Response> void registerPostMethod(
             String path,
             Class<Body> bodyType,
             Class<Response> responseType,
-            TriFunction<Map<String, String>, Map<String, String>, Body, Response> listener    ){
+            TriFunction<Map<String, String>, Map<String, String>, Body, HttpResponse> listener){
         registerListener(MethodType.POST, path,
                 new UriListener(path, MethodType.POST, bodyType, responseType, listener, logger, objectMapper));
     }
@@ -207,13 +214,13 @@ public class HTTPServer {
      * @param responseType The type of object to be returned in the response.
      * @param listener     The function to be called to handle the request.
      * @param <Body>       The type of the request body.
-     * @param <Response>   The type of the response.
+     * @param <Response>   The type of the response Body.
      */
     public <Body, Response> void registerPutMethod(
             String path,
             Class<Body> bodyType,
             Class<Response> responseType,
-            TriFunction<Map<String, String>, Map<String, String>, Body, Response> listener    ){
+            TriFunction<Map<String, String>, Map<String, String>, Body, HttpResponse> listener    ){
         registerListener(MethodType.PUT, path,
                 new UriListener(path, MethodType.PUT, bodyType, responseType, listener, logger, objectMapper));
     }
@@ -226,13 +233,13 @@ public class HTTPServer {
      * @param responseType The type of object to be returned in the response.
      * @param listener     The function to be called to handle the request.
      * @param <Body>       The type of the request body.
-     * @param <Response>   The type of the response.
+     * @param <Response>   The type of the response body.
      */
     public <Body, Response> void registerPatchMethod(
             String path,
             Class<Body> bodyType,
             Class<Response> responseType,
-            TriFunction<Map<String, String>, Map<String, String>, Body, Response> listener
+            TriFunction<Map<String, String>, Map<String, String>, Body, HttpResponse> listener
     ){
         registerListener(MethodType.PATCH, path,
                 new UriListener(path, MethodType.PATCH, bodyType, responseType, listener, logger, objectMapper));
@@ -244,12 +251,12 @@ public class HTTPServer {
      * @param path         The path to register the handler for.
      * @param responseType The type of object to be returned in the response.
      * @param listener     The function to be called to handle the request.
-     * @param <Response>   The type of the response.
+     * @param <Response>   The type of the response body.
      */
     public <Response> void registerDeleteMethod(
             String path,
             Class<Response> responseType,
-            BiFunction<Map<String, String>, Map<String, String>, Response> listener
+            BiFunction<Map<String, String>, Map<String, String>, HttpResponse> listener
     ){
         registerListener(MethodType.DELETE, path,
                 new UriListener(path, MethodType.DELETE, null, responseType, listener, logger, objectMapper));
@@ -349,18 +356,13 @@ public class HTTPServer {
                     throw new HttpListenerNotFoundException("No listener was found for this path.");
                 }
                 Map<String, String> pathVariables = HTTPRequestParser.extractPathVariables(listener.path, request.path());
-                UriListener.ResponseData responseBody;
+
                 switch (listener.type){
-                    case GET, DELETE -> responseBody = listener.execute(request.headers(), pathVariables);
-                    case PUT, POST, PATCH -> responseBody = listener.execute(request.headers(), pathVariables, request.body());
+                    case GET, DELETE -> response = listener.execute(request.headers(), pathVariables);
+                    case PUT, POST, PATCH -> response = listener.execute(request.headers(), pathVariables, request.body());
                     default -> throw new IllegalArgumentException("Unsupported HTTP method: " + request);
                 }
-                response = new HttpResponse(
-                        200,
-                        "OK",
-                        Map.of("Content-Type", responseBody.contentType()),
-                        responseBody.body()
-                );
+
             } catch (HttpListenerBadRequestException | IllegalArgumentException e) {
                 logger.error("Listener not found: " + e.getMessage(), e);
                 response = new HttpResponse(400, "Bad Request",
@@ -402,12 +404,12 @@ public class HTTPServer {
     private void sendResponse(SocketChannel clientChannel, HttpResponse response) throws IOException {
         StringBuilder responseBuilder = new StringBuilder();
         responseBuilder.append("HTTP/1.1 ")
-                .append(response.statusCode())
+                .append(response.statusCode)
                 .append(" ")
-                .append(response.statusMessage())
+                .append(response.statusMessage)
                 .append("\r\n");
 
-        for (Map.Entry<String, String> header : response.headers().entrySet()) {
+        for (Map.Entry<String, String> header : response.headers.entrySet()) {
             responseBuilder.append(header.getKey())
                     .append(": ")
                     .append(header.getValue())
@@ -415,8 +417,8 @@ public class HTTPServer {
         }
 
         byte[] bodyBytes;
-        if (response.body() instanceof byte[]) {
-            bodyBytes = (byte[]) response.body();
+        if (response.body instanceof byte[]) {
+            bodyBytes = (byte[]) response.body;
         } else {
             String bodyStr = response.body.toString();
             bodyBytes = bodyStr.getBytes();
