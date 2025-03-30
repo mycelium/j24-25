@@ -96,4 +96,29 @@ class JsonParserTest {
         assertEquals("Saint Petersburg", address.get("city"));
         assertEquals("78", address.get("region number"));
     }
+
+    @Test
+    void testInheritedFieldsSerialization() {
+        ExtendedUser extendedUser = new ExtendedUser();
+        extendedUser.setName("Mark");
+        extendedUser.setAge(22);
+        extendedUser.setDepartment("IT");
+
+        String json = JsonParser.fromObjToJson(extendedUser);
+
+        assertTrue(json.contains("\"name\":\"Mark\""));
+        assertTrue(json.contains("\"age\":22"));
+        assertTrue(json.contains("\"department\":\"IT\""));
+    }
+
+    @Test
+    void testInheritedFieldsDeserialization() {
+        String json = "{\"name\":\"Mark\",\"age\":22,\"department\":\"IT\"}";
+
+        ExtendedUser extendedUser = JsonParser.fromJsonToClass(json, ExtendedUser.class);
+
+        assertEquals("Mark", extendedUser.getName());
+        assertEquals(22, extendedUser.getAge());
+        assertEquals("IT", extendedUser.getDepartment());
+    }
 }
