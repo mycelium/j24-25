@@ -1,8 +1,7 @@
 package ru.spbstu.telematics.json.jsoninteraction;
 
 import java.lang.reflect.Field;
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Class for writing Map and fields of an object in JSON string
@@ -55,19 +54,15 @@ public class JsonWriter implements JsonInteractor {
         return objectToJsonString(object);
     }
 
-    /**
-     * Helps to write {@code object} in the string
-     * @param object object that should be written in string
-     * @return the part of JSON string that contains {@code object}'s fields
-     * @throws IllegalAccessException when {@link Field#get(Object)} throws this exception
-     */
     private static String objectToJsonString(Object object) throws IllegalAccessException {
         StringBuilder json = new StringBuilder("{");
         Class<?> filledClass = object.getClass();
-        Field[] fields = filledClass.getDeclaredFields();
+
+        // Получаем все поля, включая унаследованные
+        List<Field> allFields = getAllFields(filledClass);
 
         boolean firstField = true;
-        for (Field field : fields) {
+        for (Field field : allFields) {
             field.setAccessible(true);
             Object value = field.get(object);
 
@@ -80,6 +75,18 @@ public class JsonWriter implements JsonInteractor {
 
         json.append("}");
         return json.toString();
+    }
+
+    /**
+     * Рекурсивно собирает все поля класса, включая поля суперклассов.
+     */
+    private static List<Field> getAllFields(Class<?> clazz) {
+        List<Field> fields = new ArrayList<>();
+        while (clazz != null && clazz != Object.class) {
+            fields.addAll(Arrays.asList(clazz.getDeclaredFields()));
+            clazz = clazz.getSuperclass();
+        }
+        return fields;
     }
 
     /**

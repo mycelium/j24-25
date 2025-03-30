@@ -12,6 +12,37 @@ import ru.spbstu.telematics.json.jsoninteraction.JsonWriter;
  * Hello world!
  */
 public class App {
+    public static class Vehicle {
+        private String material;
+        private String color;
+        public Vehicle(String material, String color) {
+            this.material = material;
+            this.color = color;
+        }
+    }
+    public static class Car extends Vehicle {
+        private String brand;
+        private String model;
+
+        // Конструктор без параметров
+        public Car() {
+            // Вызываем конструктор суперкласса с дефолтными значениями
+            super("", "");
+        }
+
+        public Car(String material, String color, String brand, String model) {
+            super(material, color);
+            this.brand = brand;
+            this.model = model;
+        }
+
+        @Override
+        public String toString() {
+            return "Car {Vehicle.material=" + super.material + ", Vehicle.color=" + super.color +
+                    ", brand=" + brand + ", model=" + model + "}";
+        }
+    }
+
     static class Person {
         private String name;
         private int age;
@@ -146,5 +177,25 @@ public class App {
         } catch (WrongJsonStringFormatException e) {
             e.printStackTrace();
         }
+
+        Car car = new Car("steel", "white", "Tesla", "model X");
+        // Конвертируем в JSON
+        json = null;
+        try {
+            json = JsonWriter.fromObjectToJsonString(car);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        System.out.println("JSON: " + json);
+
+        // Обратно из JSON в объект
+        Car parsedCar = null;
+        try {
+             parsedCar = JsonReader.fromJsonNewObject(json, Car.class);
+        } catch (WrongJsonStringFormatException | InstantiationException | IllegalAccessException |
+                 NoSuchFieldException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Parsed Object: " + parsedCar);
     }
 }

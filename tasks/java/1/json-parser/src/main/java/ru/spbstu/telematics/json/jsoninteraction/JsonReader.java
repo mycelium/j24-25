@@ -187,14 +187,7 @@ public class JsonReader implements JsonInteractor {
             // Создаем экземпляр целевого класса
             Constructor<T> constructor = fillingClass.getDeclaredConstructor();
             constructor.setAccessible(true);
-            T object = null;
-            try {
-                object = constructor.newInstance();
-            } catch (InstantiationException e) {
-                throw new InstantiationException("The " + fillingClass + " class is abstract");
-            } catch (IllegalAccessException e) {
-                throw new IllegalAccessException("Cannot access to constructor of " + fillingClass);
-            }
+            T object = constructor.newInstance();
 
             // Убираем { } и разделяем JSON на пары ключ-значение
             json = json.substring(1, json.length() - 1).strip();
@@ -207,40 +200,48 @@ public class JsonReader implements JsonInteractor {
                 }
 
                 // Получаем имя поля и его значение
-                String fieldName = keyValue[0].strip().replaceAll("^\"|\"$", ""); // Убираем кавычки
+                String fieldName = keyValue[0].strip().replaceAll("^\"|\"$", "");
                 String fieldValue = keyValue[1].strip();
 
+                // Находим поле в классе или его суперклассах
                 Field field = null;
-                try {
-                    field = fillingClass.getDeclaredField(fieldName);
-                } catch (NoSuchFieldException e) {
+                Class<?> cls = fillingClass;
+                while (cls != null) {
+                    try {
+                        field = cls.getDeclaredField(fieldName);
+                        break;
+                    } catch (NoSuchFieldException e) {
+                        cls = cls.getSuperclass();
+                    }
+                }
+                if (field == null) {
                     throw new NoSuchFieldException("There is no field " + fieldName + " in " + fillingClass);
                 }
                 field.setAccessible(true);
                 Class<?> fieldType = field.getType();
 
                 // Проверяем, является ли поле коллекцией
+                Object parsedValue;
                 if (Collection.class.isAssignableFrom(fieldType)) {
                     ParameterizedType genericType = (ParameterizedType) field.getGenericType();
                     Class<?> collectionElementType = (Class<?>) genericType.getActualTypeArguments()[0];
 
                     Supplier<Collection<Object>> collectionSupplier = getCollectionSupplier(fieldType);
                     Collection<Object> collection = parseArray(fieldValue, collectionSupplier, collectionElementType);
-
-                    field.set(object, collection);
+                    parsedValue = collection;
                 }
                 // Если поле является вложенным объектом
                 else if (fieldValue.startsWith("{") && fieldValue.endsWith("}")) {
                     Object nestedObject = fromJsonNewObject(fieldValue, fieldType);
-                    field.set(object, nestedObject);
+                    parsedValue = nestedObject;
                 }
+                // Примитивные типы и строки
                 else {
-                    Object parsedValue = parseValue(fieldValue);
-                    field.set(object, parsedValue);
+                    parsedValue = parseValue(fieldValue);
                 }
+                field.set(object, parsedValue);
             }
             return object;
-
         } catch (NoSuchMethodException | InvocationTargetException e) {
             throw new RuntimeException("Cannot instantiate object of class " + fillingClass, e);
         }
@@ -305,11 +306,18 @@ public class JsonReader implements JsonInteractor {
             String fieldName = keyValue[0].strip().replaceAll("^\"|\"$", "");
             String value = keyValue[1].strip();
 
-            // Находим поле в классе
-            Field field;
-            try {
-                field = targetClass.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException e) {
+            // Находим поле в классе или его суперклассах
+            Field field = null;
+            Class<?> cls = targetClass;
+            while (cls != null) {
+                try {
+                    field = cls.getDeclaredField(fieldName);
+                    break;
+                } catch (NoSuchFieldException e) {
+                    cls = cls.getSuperclass();
+                }
+            }
+            if (field == null) {
                 throw new NoSuchFieldException("The class " + targetClass + " does not have field " + fieldName);
             }
 
@@ -321,49 +329,28 @@ public class JsonReader implements JsonInteractor {
             Object parsedValue;
             if (value.startsWith("{") && value.endsWith("}")) {
                 // Вложенный объект
-                Object nestedObject = null;
-                try {
-                    nestedObject = field.get(targetObject);
-                } catch (IllegalAccessException e) {
-                    throw new IllegalAccessException("Cannot get nested object from " + targetObject);
-                }
+                Object nestedObject = field.get(targetObject);
                 if (nestedObject == null) {
-                    try {
-                        try {
-                            nestedObject = fieldType.getDeclaredConstructor().newInstance();
-                        } catch (NoSuchMethodException e) {
-                            throw new NoSuchMethodException("There is no default constructor in " + nestedObject);
-                        }
-                    } catch (IllegalAccessException e) {
-                        throw new IllegalAccessException("Cannot call constructor of nested object from " + targetObject);
-                    }
-                    try {
-                        field.set(targetObject, nestedObject);
-                    } catch (IllegalAccessException e) {
-                        throw new IllegalAccessException("Cannot set the value of nested object from " + targetObject);
-                    }
+                    nestedObject = fieldType.getDeclaredConstructor().newInstance();
+                    field.set(targetObject, nestedObject);
                 }
                 fromJsonToObject(value, nestedObject);
                 parsedValue = nestedObject;
             } else if (value.startsWith("[") && value.endsWith("]")) {
                 // Коллекция
                 ParameterizedType genericType = (ParameterizedType) field.getGenericType();
-                Class<?> collectionType = (Class<?>) genericType.getActualTypeArguments()[0];
-
+                Class<?> collectionElementType = (Class<?>) genericType.getActualTypeArguments()[0];
                 Supplier<Collection<Object>> collectionSupplier = getCollectionSupplier(fieldType);
-                parsedValue = parseArray(value, collectionSupplier, collectionType);
+                parsedValue = parseArray(value, collectionSupplier, collectionElementType);
             } else {
                 // Примитивные типы
                 parsedValue = parseValue(value);
             }
 
-            try {
-                field.set(targetObject, parsedValue);
-            } catch (IllegalAccessException e) {
-                throw new IllegalAccessException("Cannot set the field of " + targetObject + " with " + parsedValue);
-            }
+            field.set(targetObject, parsedValue);
         }
     }
+
 
     /**
      * Reads JSON file to Map of (String, Object). Check {@link #fromJsonToMap(String)} method for more details
