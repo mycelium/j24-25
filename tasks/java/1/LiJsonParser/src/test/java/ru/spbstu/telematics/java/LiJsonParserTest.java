@@ -88,4 +88,23 @@ public class LiJsonParserTest {
         assertTrue(user.getFavMovies().contains("The Shawshank Redemption"));
         assertTrue(user.getFavMovies().contains("Fight Club"));
     }
+
+    //проверка на парсинг объекта с наследованием
+    @Test
+    public void testParseToClassWithInheritance() throws LiJsonException {
+        String json = "{" +
+                "\"parentField\":\"parentValue\"," +
+                "\"parentNumber\":1," +
+                "\"childField\":\"childValue\"," +
+                "\"childFlag\":true" +
+                "}";
+
+        LiJsonParser parser = new LiJsonParser(json);
+        LiJsonUser.ChildClass result = parser.parseJsObjectToClass(LiJsonUser.ChildClass.class);
+
+        assertEquals("parentValue", result.getParentField());
+        assertEquals(1, result.getParentNumber());
+        assertEquals("childValue", result.getChildField());
+        assertTrue(result.isChildFlag());
+    }
 }

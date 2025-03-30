@@ -1,8 +1,7 @@
 package ru.spbstu.telematics.java.JsonWriting;
 import ru.spbstu.telematics.java.Common.LiJsonException;
 import java.lang.reflect.Field;
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 
 
 public class LiJsonSerializer {
@@ -64,7 +63,7 @@ public class LiJsonSerializer {
     //метод для преобразования произвольного объекта в json-строку
     private String serializeObject(Object object) throws LiJsonException, IllegalAccessException {
         StringBuilder json = new StringBuilder("{");
-        Field[] fields = object.getClass().getDeclaredFields();
+        List<Field> fields = getAllFields(object.getClass());
         boolean first = true;
         for (Field field : fields) {
             field.setAccessible(true);
@@ -89,6 +88,16 @@ public class LiJsonSerializer {
                 .replace("\n", "\\n")
                 .replace("\r", "\\r")
                 .replace("\t", "\\t");
+    }
+
+    //метод для получения всех полей класса, в том числе наследованных
+    private List<Field> getAllFields(Class<?> clazz) {
+        List<Field> fields = new ArrayList<>();
+        while (clazz != null && clazz != Object.class) {
+            fields.addAll(Arrays.asList(clazz.getDeclaredFields()));
+            clazz = clazz.getSuperclass();
+        }
+        return fields;
     }
 }
 

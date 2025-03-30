@@ -5,9 +5,9 @@ import ru.spbstu.telematics.java.Common.LiJsonUser;
 import ru.spbstu.telematics.java.JsonWriting.LiJsonSerializer;
 import java.util.*;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class LiJsonSerializerTest {
-
     //проверка на преобразование null
     @Test
     public void testSerializeNull() throws IllegalAccessException, LiJsonException {
@@ -81,4 +81,23 @@ public class LiJsonSerializerTest {
                 + "\"favMovies\":[\"The Shawshank Redemption\",\"Fight Club\"]"
                 + "}", result);
     }
+
+    //проверка на преобразование объекта с наследованием
+    @Test
+    public void testSerializeObjectWithInheritance() throws IllegalAccessException, LiJsonException {
+        LiJsonSerializer serializer = new LiJsonSerializer();
+        LiJsonUser.ChildClass child = new LiJsonUser.ChildClass();
+        String result = serializer.serializeToJson(child);
+
+        assertTrue("JSON должен содержать поле из родительского класса",
+                result.contains("\"parentField\":\"parentValue\""));
+        assertTrue("JSON должен содержать поле из родительского класса",
+                result.contains("\"parentNumber\":1"));
+        assertTrue("JSON должен содержать поле из дочернего класса",
+                result.contains("\"childField\":\"childValue\""));
+        assertTrue("JSON должен содержать поле из дочернего класса",
+                result.contains("\"childFlag\":true"));
+    }
+
 }
+

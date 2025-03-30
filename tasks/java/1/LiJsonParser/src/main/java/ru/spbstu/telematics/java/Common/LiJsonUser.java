@@ -47,4 +47,30 @@ public class LiJsonUser {
     public void setFavMovies(List<String> favMovies) {
         this.favMovies = favMovies;
     }
+
+    static class ParentClass {
+        private String parentField = "parentValue";
+        private long parentNumber = 1;
+
+        public String getParentField() {
+            return parentField;
+        }
+
+        public long getParentNumber() {
+            return parentNumber;
+        }
+    }
+
+    public static class ChildClass extends ParentClass {
+        private String childField = "childValue";
+        private boolean childFlag = true;
+
+        public String getChildField() {
+            return childField;
+        }
+
+        public boolean isChildFlag() {
+            return childFlag;
+        }
+    }
 }

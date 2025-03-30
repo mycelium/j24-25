@@ -81,7 +81,7 @@ public class LiJsonParser {
             //итерируемся по всем записям в map
             for (Map.Entry<String, Object> entry : map.entrySet()) {
                 //получаем поля класса с именем, соответствующим ключу
-                Field field = clazz.getDeclaredField(entry.getKey());
+                Field field = getAllFields(clazz,entry.getKey());
                 field.setAccessible(true);
                 //устанавливаем в поле экземпляра класса значение из map для соотв-го ключа
                 field.set(instance, entry.getValue());
@@ -126,5 +126,16 @@ public class LiJsonParser {
         } catch (NumberFormatException e) {
             throw new LiJsonException("Неправильный формат числа: " + token);
         }
+    }
+
+    private Field getAllFields(Class<?> clazz, String fieldName) throws NoSuchFieldException {
+        while (clazz != null && clazz != Object.class) {
+            try {
+                return clazz.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException e) {
+                clazz = clazz.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(fieldName);
     }
 }
