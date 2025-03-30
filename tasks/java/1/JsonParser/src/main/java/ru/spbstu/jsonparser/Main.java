@@ -82,3 +82,11 @@ class User {
         this.skills = skills;
     }
 }
+
+class ExtendedUser extends User {
+    private String department;
+
+    // геттер и сеттер
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+}
