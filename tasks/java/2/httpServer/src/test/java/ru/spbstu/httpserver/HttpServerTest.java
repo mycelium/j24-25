@@ -200,4 +200,21 @@ public class HttpServerTest {
         // Остановка сервера
         server.stop();
     }
+
+
+    @Test
+    public void testAddRouteDuplicateThrowsException() {
+        HttpServer server = new HttpServer();
+        HttpServer.RequestHandler handler1 = (req, res) -> res.setBody("Handler 1");
+        HttpServer.RequestHandler handler2 = (req, res) -> res.setBody("Handler 2");
+
+        server.addRoute("GET", "/test", handler1);
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> server.addRoute("GET", "/test", handler2)
+        );
+
+        assertEquals("Route already exists: GET /test", exception.getMessage());
+    }
 }
