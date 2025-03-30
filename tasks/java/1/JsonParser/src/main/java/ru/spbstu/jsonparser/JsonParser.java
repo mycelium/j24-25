@@ -135,22 +135,24 @@ public class JsonParser {
     private static <T> T convertMapToObject(Map<String, Object> map, Class<T> targetClass) {
         try {
             T instance = targetClass.getDeclaredConstructor().newInstance();
-            for (Field field : targetClass.getDeclaredFields()) {
-                field.setAccessible(true);
-                Object value = map.get(field.getName());
-                //if (value == null) continue;
+            Class<?> currentClass = targetClass;
 
-                // Обработка вложенности
-                if (value instanceof Map) {
-                    value = convertMapToObject((Map<String, Object>) value, field.getType());
+            // Проходим по всем классам в иерархии наследования
+            while (currentClass != null && currentClass != Object.class) {
+                for (Field field : currentClass.getDeclaredFields()) {
+                    field.setAccessible(true);
+                    Object value = map.get(field.getName());
+                    if (value == null) continue;
+
+                    if (value instanceof Map) {
+                        value = convertMapToObject((Map<String, Object>) value, field.getType());
+                    } else if (value instanceof List<?> list) {
+                        value = convertListToFieldType(list, field);
+                    }
+
+                    field.set(instance, value);
                 }
-
-                // Обработка коллекций и массивов
-                if (value instanceof List<?> list) {
-                    value = convertListToFieldType(list, field);
-                }
-
-                field.set(instance, value);
+                currentClass = currentClass.getSuperclass(); // Переходим к суперклассу
             }
             return instance;
         } catch (Exception e) {
@@ -224,12 +226,19 @@ public class JsonParser {
     }
 
     private static String serializeObject(Object object) {
-        Field[] fields = object.getClass().getDeclaredFields();
-        Arrays.stream(fields).forEach(field -> field.setAccessible(true));
+        List<Field> allFields = new ArrayList<>();
+        Class<?> currentClass = object.getClass();
 
-        return Arrays.stream(fields)
+        // Собираем поля со всех уровней иерархии
+        while (currentClass != null && currentClass != Object.class) {
+            allFields.addAll(Arrays.asList(currentClass.getDeclaredFields()));
+            currentClass = currentClass.getSuperclass();
+        }
+
+        return allFields.stream()
                 .map(field -> {
                     try {
+                        field.setAccessible(true);
                         String key = field.getName();
                         Object value = field.get(object);
                         return "\"" + key + "\":" + convertObjectToJson(value);
