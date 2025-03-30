@@ -5,6 +5,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.Channels;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -64,8 +65,8 @@ public class HttpServer {
 
     private void handleConnection(SocketChannel clientChannel) {
         try (clientChannel;
-             BufferedReader reader = new BufferedReader(new InputStreamReader(Channels.newInputStream(clientChannel)));
-             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(Channels.newOutputStream(clientChannel)))) {
+             BufferedReader reader = new BufferedReader(new InputStreamReader(
+                     Channels.newInputStream(clientChannel), StandardCharsets.UTF_8))) {
 
             System.out.println("New connection received");
 
@@ -96,7 +97,7 @@ public class HttpServer {
                 handler.handle(request, response);
             }
 
-            sendResponse(writer, response);
+            sendResponse(clientChannel, response);
             System.out.println("Response sent: " + response.getStatus());
         } catch (IOException e) {
             System.err.println("Error handling connection: " + e.getMessage());
@@ -107,23 +108,35 @@ public class HttpServer {
         }
     }
 
-    private void sendResponse(BufferedWriter writer, HttpResponse response) throws IOException {
-        // Записываем статусную строку
-        writer.write("HTTP/1.1 " + response.getStatus() + "\r\n");
+    private void sendResponse(SocketChannel clientChannel, HttpResponse response) throws IOException {
+        try (OutputStream outputStream = Channels.newOutputStream(clientChannel);
+             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream))) {
 
-        // Записываем заголовки
-        for (Map.Entry<String, String> entry : response.getHeaders().entrySet()) {
-            writer.write(entry.getKey() + ": " + entry.getValue() + "\r\n");
+            // Записываем статусную строку и заголовки
+            writer.write("HTTP/1.1 " + response.getStatus() + "\r\n");
+            for (Map.Entry<String, String> entry : response.getHeaders().entrySet()) {
+                writer.write(entry.getKey() + ": " + entry.getValue() + "\r\n");
+            }
+            // Пустая строка между заголовками и телом
+            writer.write("\r\n");
+            writer.flush();
+
+            // Отправляем тело ответа
+            if (response.isFile()) {
+                // Потоковая передача файла
+                try (InputStream fileStream = new FileInputStream(response.getFileBody())) {
+                    byte[] buffer = new byte[8192];
+                    int bytesRead;
+                    while ((bytesRead = fileStream.read(buffer)) != -1) {
+                        outputStream.write(buffer, 0, bytesRead);
+                    }
+                }
+            } else {
+                // Обычные данные
+                outputStream.write(response.getBody());
+            }
+            outputStream.flush();
         }
-
-        // Пустая строка между заголовками и телом
-        writer.write("\r\n");
-
-        // Записываем тело ответа
-        writer.write(response.getBody());
-
-        // Очищаем буфер и отправляем данные
-        writer.flush();
     }
 
     private void defaultHandler(HttpRequest request, HttpResponse response) {
