@@ -7,7 +7,7 @@ This JSON parser:
 - File I/O also to dealWithIt.json file
 
 | Component          | Purpose                          | Key Methods                     |
-------------------------------------------------------------------------------------------
+|____________________|__________________________________|_________________________________|
 | **Parser**         | JSON → Java Map/Object           | `JSONIntoMAP()`, `JSONToObj()`  |
 | **Serializer**     | Java Object → JSON String        | `toJSON()`, `Values()`          |
 | **File Handler**   | Read/Write JSON files            | `FileWriter`                    |
@@ -15,7 +15,7 @@ This JSON parser:
 ### Key Features
 ```java
 // 1. Parse JSON to Map
-Map<String, Object> data = JSONIntoMAP("{\"name\":\"John\"}");
+Map<String, Object> data = JSONIntoMAP("{\"futureCar\":\"Volvo\"}");
 
 // 2. Convert JSON to Java Object
 MyClass obj = JSONToObj(jsonString, MyClass.class);
@@ -24,6 +24,6 @@ MyClass obj = JSONToObj(jsonString, MyClass.class);
 String json = toJSON(obj);
 
 // 4. Save to file
-try (FileWriter writer = new FileWriter("data.json")) {
+try (FileWriter writer = new FileWriter("dealWithIt.json")) {
     writer.write(toJSON(obj));
 }
