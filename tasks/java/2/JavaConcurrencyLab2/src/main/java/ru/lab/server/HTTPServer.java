@@ -24,10 +24,11 @@ public class HTTPServer {
     // Настройка пула потоков
     private final ExecutorService executors;
 
-    private final List<UriListener> listeners = new LinkedList<>();
+    private final Map<String, UriListener> listeners = new ConcurrentHashMap<>();
     private ObjectMapper objectMapper = new HttpServerBaseMapper();
 
     private final Logger logger = Logger.getLogger(HTTPServer.class);
+    private boolean isRunning = false;
 
     /**
      * Creates an HTTP server that listens on the specified host and port.
@@ -58,6 +59,19 @@ public class HTTPServer {
         else{
             this.executors = Executors.newFixedThreadPool(numberOfThreads);
         }
+    }
+
+    /**
+     * Starts the HTTP server, if it is not already running.
+     * Creates a separate thread for processing incoming connections via Selector.
+     *
+     * @throws IllegalStateException если сервер уже запущен
+     */
+    public void start() {
+        if (isRunning) {
+            throw new IllegalStateException("Server is already running");
+        }
+        isRunning = true;
         this.executors.submit(() -> {
             try {
                 addSelector();
@@ -66,6 +80,34 @@ public class HTTPServer {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    /**
+     * Stops the HTTP server by closing:
+     * - server channel
+     * - pool of handler threads
+     */
+    public void stop() {
+        isRunning = false;
+        try {
+            channel.close();
+            executors.shutdown();
+        } catch (IOException e) {
+            logger.error("Error stopping server: " + e.getMessage());
+        }
+    }
+
+    // Record classes for better request/response handling
+    record HttpRequest(MethodType method, String path,
+                       Map<String, String> headers, String body) {}
+
+    record HttpResponse(int statusCode, String statusMessage,
+                        Map<String, String> headers, Object body) {
+
+        public void addHeader(String name, String value) {
+            this.headers.put(name, value);
+        }
+
     }
 
     /**
@@ -97,6 +139,31 @@ public class HTTPServer {
     }
 
     /**
+     * Generates a unique key for registering request handlers.
+     * Key format: "METHOD:PATH" (for example, "GET:/api/users")
+     */
+    private String generateListenerKey(MethodType methodType, String path) {
+        return methodType.name() + ":" + path;
+    }
+
+    /**
+     * Registers a request handler for the specified method and path.
+     * Checks that there is no already registered handler for this method+path combination.
+     *
+     * @param methodType HTTP method
+     * @param path URL path
+     * @param listener request handler
+     * @throws IllegalArgumentException if the handler for this method and path is already registered
+     */
+    private void registerListener(MethodType methodType, String path, UriListener listener) {
+        String key = generateListenerKey(methodType, path);
+        if (listeners.containsKey(key)) {
+            throw new IllegalArgumentException("Listener already registered for " + methodType + " " + path);
+        }
+        listeners.put(key, listener);
+    }
+
+    /**
      * Registers a handler for GET requests at the specified path.
      *
      * @param path         The path to register the handler for.
@@ -109,7 +176,8 @@ public class HTTPServer {
             Class<Response> responseType,
             BiFunction<Map<String, String>, Map<String, String>, Response> listener
     ){
-        listeners.add(new UriListener(path, MethodType.GET, null, responseType, listener, logger, objectMapper));
+        registerListener(MethodType.GET, path,
+            new UriListener(path, MethodType.GET, null, responseType, listener, logger, objectMapper));
     }
 
     /**
@@ -127,7 +195,8 @@ public class HTTPServer {
             Class<Body> bodyType,
             Class<Response> responseType,
             TriFunction<Map<String, String>, Map<String, String>, Body, Response> listener    ){
-        listeners.add(new UriListener(path, MethodType.POST, bodyType, responseType, listener, logger, objectMapper));
+        registerListener(MethodType.POST, path,
+                new UriListener(path, MethodType.POST, bodyType, responseType, listener, logger, objectMapper));
     }
 
     /**
@@ -145,7 +214,8 @@ public class HTTPServer {
             Class<Body> bodyType,
             Class<Response> responseType,
             TriFunction<Map<String, String>, Map<String, String>, Body, Response> listener    ){
-        listeners.add(new UriListener(path, MethodType.PUT, bodyType, responseType, listener, logger, objectMapper));
+        registerListener(MethodType.PUT, path,
+                new UriListener(path, MethodType.PUT, bodyType, responseType, listener, logger, objectMapper));
     }
 
     /**
@@ -164,7 +234,8 @@ public class HTTPServer {
             Class<Response> responseType,
             TriFunction<Map<String, String>, Map<String, String>, Body, Response> listener
     ){
-        listeners.add(new UriListener(path, MethodType.PATCH, bodyType, responseType, listener, logger, objectMapper));
+        registerListener(MethodType.PATCH, path,
+                new UriListener(path, MethodType.PATCH, bodyType, responseType, listener, logger, objectMapper));
     }
 
     /**
@@ -180,7 +251,8 @@ public class HTTPServer {
             Class<Response> responseType,
             BiFunction<Map<String, String>, Map<String, String>, Response> listener
     ){
-        listeners.add(new UriListener(path, MethodType.DELETE, null, responseType, listener, logger, objectMapper));
+        registerListener(MethodType.DELETE, path,
+                new UriListener(path, MethodType.DELETE, null, responseType, listener, logger, objectMapper));
     }
 
     /**
@@ -211,9 +283,14 @@ public class HTTPServer {
                 } else if (key.isReadable()) {
                     // Обрабатываем входящие данные в отдельном потоке
                     SocketChannel clientChannel = (SocketChannel) key.channel();
-                    String request = getRequest(clientChannel);
-                    logger.info("Received request: " + request);
-                    executors.submit(() -> handleClientRequest(request, clientChannel));
+                    try {
+                        HttpRequest request = readRequest(clientChannel);
+                        logger.info("Received request: " + request);
+                        executors.submit(() -> handleClientRequest(request, clientChannel));
+                    } catch (IOException e) {
+                        logger.error("Error reading request: " + e.getMessage());
+                        clientChannel.close();
+                    }
                 }
 
                 keyIterator.remove(); // Удаляем обработанный ключ
@@ -225,19 +302,17 @@ public class HTTPServer {
      * Reads an HTTP request from the client channel.
      *
      * @param clientChannel The client channel.
-     * @return A string containing the HTTP request.
+     * @return HttpRequest.
      * @throws IOException If an I/O error occurs while reading the data.
      */
-    private String getRequest(SocketChannel clientChannel) throws IOException{
+    private HttpRequest readRequest(SocketChannel clientChannel) throws IOException {
         ByteBuffer buffer = ByteBuffer.allocate(1024);
         StringBuilder requestBuilder = new StringBuilder();
 
         while (true) {
             int bytesRead = clientChannel.read(buffer);
             if (bytesRead == -1) {
-                // Клиент закрыл соединение
                 clientChannel.close();
-                logger.info("Connection closed by client: " + clientChannel.getRemoteAddress());
                 throw new IOException("Client closed connection");
             }
 
@@ -245,10 +320,14 @@ public class HTTPServer {
             requestBuilder.append(new String(buffer.array(), 0, bytesRead));
             buffer.clear();
 
-            // Проверяем, достигнут ли конец запроса
             if (requestBuilder.toString().contains("\r\n\r\n")) {
-                // Обрабатываем запрос
-                return requestBuilder.toString();
+                String requestStr = requestBuilder.toString();
+                return new HttpRequest(
+                        HTTPRequestParser.getMethodType(requestStr),
+                        HTTPRequestParser.getPath(requestStr),
+                        HTTPRequestParser.getHeaders(requestStr),
+                        HTTPRequestParser.getBody(requestStr)
+                );
             }
         }
     }
@@ -256,119 +335,101 @@ public class HTTPServer {
     /**
      * Processes an HTTP request and generates a response.
      *
-     * @param request      A string containing the HTTP request.
+     * @param request      HttpRequest.
      * @param clientChannel The client channel.
      */
-    private void handleClientRequest(String request, SocketChannel clientChannel) {
+    private void handleClientRequest(HttpRequest request, SocketChannel clientChannel) {
         try {
             // Формируем ответ
-            String response;
-            String path = "";
+            HttpResponse response;
             try {
-                // извлекаем параметры запроса
-                MethodType methodType = HTTPRequestParser.getMethodType(request);
-                path = HTTPRequestParser.getPath(request);
-                Map<String, String> headers = HTTPRequestParser.getHeaders(request);
-                String body = HTTPRequestParser.getBody(request);
-                UriListener listener = getUriListener(methodType, path);
-                Map<String, String> pathVariables = HTTPRequestParser.extractPathVariables(listener.path, path);
-                switch (methodType){
-                    case GET, DELETE -> response = handleLessBodyRequests(headers, pathVariables, listener);
-                    case PUT, POST, PATCH -> response = handleBodyRequests(headers, pathVariables, body, listener);
+                String listenerKey = generateListenerKey(request.method(), request.path());
+                UriListener listener = listeners.get(listenerKey);
+                if (listener == null) {
+                    throw new HttpListenerNotFoundException("No listener was found for this path.");
+                }
+                Map<String, String> pathVariables = HTTPRequestParser.extractPathVariables(listener.path, request.path());
+                UriListener.ResponseData responseBody;
+                switch (listener.type){
+                    case GET, DELETE -> responseBody = listener.execute(request.headers(), pathVariables);
+                    case PUT, POST, PATCH -> responseBody = listener.execute(request.headers(), pathVariables, request.body());
                     default -> throw new IllegalArgumentException("Unsupported HTTP method: " + request);
                 }
+                response = new HttpResponse(
+                        200,
+                        "OK",
+                        Map.of("Content-Type", responseBody.contentType()),
+                        responseBody.body()
+                );
             } catch (HttpListenerBadRequestException | IllegalArgumentException e) {
                 logger.error("Listener not found: " + e.getMessage(), e);
-                response = createErrorResponse(400, "Bad Request", e.getMessage() + " " + path);
+                response = new HttpResponse(400, "Bad Request",
+                        Map.of("Content-Type", "text/plain"), e.getMessage());
             } catch (HttpListenerNotFoundException e) {
                 logger.error("Listener not found: " + e.getMessage(), e);
-                response = createErrorResponse(404, "Not Found", "Resource not found: " + path);
+                response = new HttpResponse(404, "Not Found",
+                        Map.of("Content-Type", "text/plain"), "Resource not found");
             } catch (Exception e){
                 logger.error("Error processing request: " + e.getMessage(), e);
-                response = createErrorResponse(500, "Internal Server Error", "An error occurred: " + e.getMessage());
+                response = new HttpResponse(500, "Internal Server Error",
+                        Map.of("Content-Type", "text/plain"), "An error occurred: " + e.getMessage());
             }
 
             logger.info("Generated response: " + response);
 
-            ByteBuffer responseBuffer = ByteBuffer.wrap(handleRequest(response).getBytes());
-            clientChannel.write(responseBuffer);
+            sendResponse(clientChannel, response);
 
             // Закрываем соединение после отправки ответа
             logger.info("Response sent to client: " + clientChannel.getRemoteAddress());
             clientChannel.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Error handling request: " + e.getMessage());
         }
     }
 
     /**
-     * Processes requests that do not contain a body (GET, DELETE).
+     * Sends an HTTP response to the client through the specified channel.
+     * Generates a valid HTTP response, including:
+     * - the status bar
+     * - headlines
+     * - the body of the response
+     * Supports both text and binary data.
      *
-     * @param headers      The request headers.
-     * @param pathVariables The path variables.
-     * @param listener     The request handler.
-     * @return The response to the request.
+     * @param clientChannel the channel for sending the response
+     * @param response response data (status, headers, body)
+     * @throws IOException when writing errors to the channel
      */
-    private String handleLessBodyRequests(Map<String, String> headers, Map<String, String> pathVariables, UriListener listener){
-        return listener.execute(headers, pathVariables);
-    }
+    private void sendResponse(SocketChannel clientChannel, HttpResponse response) throws IOException {
+        StringBuilder responseBuilder = new StringBuilder();
+        responseBuilder.append("HTTP/1.1 ")
+                .append(response.statusCode())
+                .append(" ")
+                .append(response.statusMessage())
+                .append("\r\n");
 
-    /**
-     * Processes requests that contain a body (POST, PUT, PATCH).
-     *
-     * @param headers      The request headers.
-     * @param pathVariables The path variables.
-     * @param body         The request body.
-     * @param listener     The request handler.
-     * @return The response to the request.
-     */
-    private String handleBodyRequests(Map<String, String> headers, Map<String, String> pathVariables, String body, UriListener listener){
-        return listener.execute(headers, pathVariables, body);
-    }
-
-    /**
-     * Returns the handler for the specified method and path.
-     *
-     * @param methodType The HTTP method type.
-     * @param path       The request path.
-     * @return The request handler.
-     * @throws HttpListenerNotFoundException If no handler is found.
-     */
-    private UriListener getUriListener(MethodType methodType, String path){
-        for (UriListener listener : listeners) {
-            if (listener.type.equals(methodType) && listener.path.equals(path)
-                    && HTTPRequestParser.comparePathWithPathTemplate(listener.path, path)) {
-                return listener;
-            }
+        for (Map.Entry<String, String> header : response.headers().entrySet()) {
+            responseBuilder.append(header.getKey())
+                    .append(": ")
+                    .append(header.getValue())
+                    .append("\r\n");
         }
-        throw new HttpListenerNotFoundException("No listener was found for this path.");
-    }
 
-    /**
-     * Generates an HTTP response based on a string.
-     *
-     * @param response The string containing the response.
-     * @return The HTTP response.
-     */
-    private static String handleRequest(String response) {
-        // Простейший парсинг HTTP-запроса
-        return "HTTP/1.1 200 OK\r\n\r\n" + response;
-    }
+        byte[] bodyBytes;
+        if (response.body() instanceof byte[]) {
+            bodyBytes = (byte[]) response.body();
+        } else {
+            String bodyStr = response.body.toString();
+            bodyBytes = bodyStr.getBytes();
+        }
 
-    /**
-     * Generates an HTTP error response.
-     *
-     * @param statusCode   The HTTP status code.
-     * @param statusMessage The status message corresponding to the status code.
-     * @param errorMessage The error message.
-     * @return The HTTP error response.
-     */
-    private String createErrorResponse(int statusCode, String statusMessage, String errorMessage) {
-        return "HTTP/1.1 " + statusCode + " " + statusMessage + "\r\n" +
-                "Content-Type: text/plain\r\n" +
-                "Content-Length: " + errorMessage.length() + "\r\n" +
-                "\r\n" +
-                errorMessage;
+        responseBuilder.append("Content-Length: ")
+                .append(bodyBytes.length)
+                .append("\r\n\r\n");
+
+        ByteBuffer headerBuffer = ByteBuffer.wrap(responseBuilder.toString().getBytes());
+        ByteBuffer bodyBuffer = ByteBuffer.wrap(bodyBytes);
+
+        clientChannel.write(new ByteBuffer[]{headerBuffer, bodyBuffer});
     }
 
     /**
