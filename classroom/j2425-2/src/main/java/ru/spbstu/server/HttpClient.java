@@ -94,16 +94,7 @@ public class HttpClient {
             writer.flush();
             logger.info("Клиент написал");
             String response = reader.readLine();
-            logger.info("Получили ответ от сервера: {}", response.replace("\\u003d", "="));
-            URLApiResponse urlResponse = gson.fromJson(response, URLApiResponse.class);
-
-            URL url = new URL(urlResponse.url);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-            connection.setDoInput(true);
-
-            Files.copy(connection.getInputStream(), Path.of("images/russian_l"), StandardCopyOption.REPLACE_EXISTING);
-
+            logger.info(response);
         } catch (IOException e) {
             e.printStackTrace();
         }
