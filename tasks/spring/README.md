@@ -86,6 +86,8 @@
     - `Admin`
   - Healthcheck endpoint (no authorization required)
     - `/healthcheck`
+      - server status
+      - list of authors (students) 
   - Users endpoint (only for admins)
     - List of all users
 - **Variant specific**
