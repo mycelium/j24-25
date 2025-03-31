@@ -1,9 +1,10 @@
 
-package org.example;
+package spbstu.lab;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.*;
+
 
 /**
  * 1) parse(String json) -> Object

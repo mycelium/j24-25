@@ -1,6 +1,6 @@
-package org.test;
+package spbstu.test;
 
-import org.example.HttpServer;
+import spbstu.lab.HttpServer;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 public class HttpServerTests {
     private static HttpServer server;
     private static final String TEST_HOST = "127.0.0.1";
-    private static final int TEST_PORT = 8081;
+    private static final int TEST_PORT = 8082;
 
     public static void main(String[] args) throws Exception {
         setupServer();

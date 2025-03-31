@@ -1,10 +1,13 @@
-package org.test;
+package spbstu.test;
 
-import org.example.SimpleJson;
+import spbstu.lab.SimpleJson;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 
 public class SimpleJsonTest {
 

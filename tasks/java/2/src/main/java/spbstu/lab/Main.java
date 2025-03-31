@@ -1,4 +1,4 @@
-package org.example;
+package spbstu.lab;
 
 
 import java.io.IOException;
