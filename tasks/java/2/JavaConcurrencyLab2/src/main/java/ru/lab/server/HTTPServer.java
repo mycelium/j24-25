@@ -1,7 +1,7 @@
 package ru.lab.server;
 
 import org.apache.log4j.Logger;
-import ru.lab.json_parser.JSONParser;
+import ru.lab.parser.JSONParser;
 import ru.lab.server.exceptions.HttpListenerBadRequestException;
 import ru.lab.server.exceptions.HttpListenerNotFoundException;
 
