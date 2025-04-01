@@ -18,6 +18,10 @@ dependencies {
     // for logging
     implementation("org.slf4j:slf4j-api:1.7.25")
     implementation("ch.qos.logback:logback-classic:1.5.15")
+
+    implementation("org.xerial:sqlite-jdbc:3.47.0.0")
+
+    implementation("org.bouncycastle:bcprov-jdk18on:1.80")
 }
 
 tasks.test {

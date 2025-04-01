@@ -12,7 +12,7 @@ public class HttpServer implements Closeable {
     ServerSocket server;
     static Gson gson = new Gson();
 
-    static Logger logger = LoggerFactory.getLogger(HttpServer.class);
+    static Logger logger = LoggerFactory.getLogger(HttpClient.class);
 
     public HttpServer(
             int port
