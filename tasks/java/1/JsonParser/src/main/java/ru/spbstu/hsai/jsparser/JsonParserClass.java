@@ -1,45 +1,76 @@
 package ru.spbstu.hsai.jsparser;
 
+import java.lang.reflect.Field;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class JsonParserClass {
-    List<String> tokens;
 
-    public JsonParserClass(String jsString) {
+    record MapPair(Map<String, Object> resultMap, int index) {}
+    record ListPair(List<Object> resultList, int index) {};
+
+    public static Map<String, Object> jsonToMap(String jsString) {
         JsonTokenizerClass tokensObj = new JsonTokenizerClass(jsString);
-        tokens = tokensObj.tokenize();
+        List<String> tokens = tokensObj.tokenize().stream()
+                .filter(n -> !n.equals(",") && !n.equals(":"))
+                .collect(Collectors.toList());
+        return convertTokenToMap(tokens, 1).resultMap;
     }
 
-    public Map<String, Object> jsonToMap() {
-        Map<String, Object> jsonMap = new HashMap<>();
-        List<String> valueArray = new ArrayList<>();
-        for (int i = 1; i < tokens.size(); i++) {
-            String currentToken = tokens.get(i);
-            if (currentToken.equals("}")) {
-                break;
+    private static ListPair convertTokenToList(List<String> subTokenList, int index) {
+        List<Object> listObject = new ArrayList<>();
+        while (index < subTokenList.size()) {
+            String token = subTokenList.get(index);
+            if (token.equals("[")) {
+                ListPair result = convertTokenToList(subTokenList, index + 1);
+                listObject.add(result.resultList);
+                index = result.index;
+            } else if (token.equals("{")) {
+                MapPair result = convertTokenToMap(subTokenList, index + 1);
+                listObject.add(result.resultMap);
+                index = result.index;
+            } else if (token.equals("]")) {
+                return new ListPair(listObject, index);
+            } else if (!token.equals(",")) {
+                listObject.add(token);
             }
-            if (currentToken.equals(",")) {
-                continue;
-            }
-            String key = currentToken;
-            i += 2;
-            currentToken = tokens.get(i);
-            if (currentToken.equals("[")) {
-                valueArray = new ArrayList<>();
-                while (true) {
-                    i++;
-                    currentToken = tokens.get(i);
-                    if (currentToken.equals("]")) break;
-                    if (currentToken.equals(",")) continue;
-                    valueArray.add(currentToken);
-                }
-                jsonMap.put(key, valueArray);
-            } else {
-                jsonMap.put(key, currentToken);
-            }
+            index++;
         }
-        return jsonMap;
+        return new ListPair(listObject, subTokenList.size());
     }
 
-
+    private static MapPair convertTokenToMap(List<String> subTokenList, int index) {
+        Map<String, Object> jsonMap = new HashMap<>();
+        String key = "";
+        while (index < subTokenList.size()) {
+            String currentToken = subTokenList.get(index);
+            switch (currentToken) {
+                case "[" -> {
+                    ListPair result = convertTokenToList(subTokenList, index + 1);
+                    jsonMap.put(key, result.resultList);
+                    key = "";
+                    index = result.index;
+                }
+                case "{" -> {
+                    MapPair result = convertTokenToMap(subTokenList, index+1);
+                    jsonMap.put(key, result.resultMap);
+                    key = "";
+                    index = result.index;
+                }
+                case "}" -> {
+                    return new MapPair(jsonMap, index);
+                }
+                default -> {
+                    if (key.isEmpty()) {
+                        key = currentToken;
+                    } else {
+                        jsonMap.put(key, currentToken);
+                        key = "";
+                    }
+                }
+            }
+            index++;
+        }
+        return new MapPair(jsonMap, subTokenList.size());
+    }
 }
