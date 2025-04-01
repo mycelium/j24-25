@@ -4,6 +4,7 @@ import org.apache.log4j.Logger;
 import ru.lab.parser.JSONParser;
 import ru.lab.server.exceptions.HttpListenerBadRequestException;
 import ru.lab.server.exceptions.HttpListenerNotFoundException;
+import ru.lab.server.exceptions.HttpServerException;
 
 
 import java.io.IOException;
@@ -363,14 +364,13 @@ public class HTTPServer {
                     default -> throw new IllegalArgumentException("Unsupported HTTP method: " + request);
                 }
 
-            } catch (HttpListenerBadRequestException | IllegalArgumentException e) {
+            } catch (HttpServerException e){
+                response = new HttpResponse(e.statusCode, e.statusMessage,
+                        Map.of("Content-Type", "text/plain"), e.getMessage());
+            } catch (IllegalArgumentException e) {
                 logger.error("Listener not found: " + e.getMessage(), e);
                 response = new HttpResponse(400, "Bad Request",
                         Map.of("Content-Type", "text/plain"), e.getMessage());
-            } catch (HttpListenerNotFoundException e) {
-                logger.error("Listener not found: " + e.getMessage(), e);
-                response = new HttpResponse(404, "Not Found",
-                        Map.of("Content-Type", "text/plain"), "Resource not found");
             } catch (Exception e){
                 logger.error("Error processing request: " + e.getMessage(), e);
                 response = new HttpResponse(500, "Internal Server Error",

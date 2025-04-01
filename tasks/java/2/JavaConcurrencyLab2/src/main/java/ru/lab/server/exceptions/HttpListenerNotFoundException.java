@@ -1,7 +1,7 @@
 package ru.lab.server.exceptions;
 
-public class HttpListenerNotFoundException extends RuntimeException{
+public class HttpListenerNotFoundException extends HttpServerException{
     public HttpListenerNotFoundException(String message){
-        super(message);
+        super(404, "Not Found", message);
     }
 }

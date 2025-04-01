@@ -1,7 +1,7 @@
 package ru.lab.server.exceptions;
 
-public class HttpListenerBadRequestException extends RuntimeException{
+public class HttpListenerBadRequestException extends HttpServerException{
     public HttpListenerBadRequestException(String message){
-        super(message);
+        super(400, "Bad Request", message);
     }
 }
