@@ -102,7 +102,7 @@ server.registerDeleteMethod(
 Image loading
 To send files using the implemented server, you need to get an image in the form of an array of bytes,
 which will later need to be passed as a body to the HttpResponse object.
-```
+```java
 server.registerGetMethod("/image", byte[].class, (headers, pathVars) -> {
             try {
                 // Читаем файл изображения в байты
@@ -130,7 +130,7 @@ server.registerGetMethod("/image", byte[].class, (headers, pathVars) -> {
         });
 ```
 After executing a Get request along this path, you will receive an array of bytes of this image. The client only needs to get the Content-Type of the image and save the byte array as an image with this type. Example of a client for uploading an image:
-```
+```java
 public static void execute() {
         String imageUrl = "http://localhost:30001/image";
         String savePath = "C:\\Users\\bogda\\j24-25\\tasks\\java\\2\\JavaConcurrencyLab2\\image\\";  // Путь для сохранения
