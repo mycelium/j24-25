@@ -1,12 +1,11 @@
 package ru.spbstu.hsai.jsparser;
 
-
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class JsonParserClass {
+public class JsonDeserializer {
 
     record MapPair(Map<String, Object> resultMap, int index) {}
     record ListPair(List<Object> resultList, int index) {};
@@ -228,7 +227,7 @@ public class JsonParserClass {
                 clazz == Byte.class || clazz == Short.class;
     }
 
-    private static List<Field> getAllFields(Class<?> convertClass){
+     static List<Field> getAllFields(Class<?> convertClass){
         List<Field> allFields = new ArrayList<>();
         while (convertClass != null){
             allFields.addAll(Arrays.asList(convertClass.getDeclaredFields()));
