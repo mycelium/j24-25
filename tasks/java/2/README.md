@@ -99,6 +99,115 @@ server.registerDeleteMethod(
     }
 );
 ```
+Image loading
+Для отправки файлов при помощи реализованного сервера требуется получить изображение в виде массива байт, 
+который в дальнейшем потребуется передать в качестве тела в объект HttpResponse. 
+```
+server.registerGetMethod("/image", byte[].class, (headers, pathVars) -> {
+            try {
+                // Читаем файл изображения в байты
+                Path imagePath = Paths.get("C:\\Users\\bogda\\j24-25\\tasks\\java\\2\\JavaConcurrencyLab2\\image\\cat.jpg");
+                byte[] imageData = Files.readAllBytes(imagePath);
+
+                // Создаем ответ с правильными заголовками
+                return new HTTPServer.HttpResponse(
+                        200,
+                        "OK",
+                        Map.of(
+                                "Content-Type", "image/jpeg",
+                                "Content-Disposition", "inline"
+                        ),
+                        imageData  // Тело ответа - байты изображения
+                );
+            } catch (IOException e) {
+                return new HTTPServer.HttpResponse(
+                        500,
+                        "Internal Server Error",
+                        Map.of("Content-Type", "text/plain"),
+                        "Error loading image: " + e.getMessage()
+                );
+            }
+        });
+```
+После выполнения Get запроса по этому пути, вы получите массив байт этого изображения. Со стороны клиента потребуетс только получить Content-Type изображения и сохранить массив байт в качестве изображения с этим типом. Пример клиента для загрузки изображения:
+```
+public static void execute() {
+        String imageUrl = "http://localhost:30001/image";
+        String savePath = "C:\\Users\\bogda\\j24-25\\tasks\\java\\2\\JavaConcurrencyLab2\\image\\";  // Путь для сохранения
+
+        try {
+            System.out.println("Downloading image from " + imageUrl);
+
+            // Создаем соединение
+            URL url = new URL(imageUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+
+            // Проверяем код ответа
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                // Получаем тип контента
+                String contentType = connection.getContentType();
+                System.out.println("Content-Type: " + contentType);
+
+                // Получаем размер файла
+                long fileSize = connection.getContentLengthLong();
+                System.out.println("File size: " + fileSize + " bytes");
+
+                // Определяем расширение файла по Content-Type
+                String extension = getFileExtension(contentType);
+                if (extension != null) {
+                    savePath += "downloaded_image" + extension;
+                }
+
+                // Скачиваем файл
+                try (InputStream in = connection.getInputStream();
+                     FileOutputStream out = new FileOutputStream(savePath)) {
+
+                    byte[] buffer = new byte[4096];
+                    int bytesRead;
+                    long totalRead = 0;
+
+                    while ((bytesRead = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, bytesRead);
+                        totalRead += bytesRead;
+
+                        // Выводим прогресс
+                        if (fileSize > 0) {
+                            int progress = (int) (totalRead * 100 / fileSize);
+                            System.out.print("\rDownload progress: " + progress + "%");
+                        }
+                    }
+                    System.out.println("\nDownload completed!");
+                }
+            } else {
+                System.err.println("Server returned HTTP code: " + responseCode);
+                try (InputStream errorStream = connection.getErrorStream()) {
+                    if (errorStream != null) {
+                        System.err.println("Error response: " + new String(errorStream.readAllBytes()));
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error downloading image: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // Определяем расширение файла по Content-Type
+    private static String getFileExtension(String contentType) {
+        if (contentType == null) return null;
+
+        return switch (contentType) {
+            case "image/jpeg" -> ".jpg";
+            case "image/png" -> ".png";
+            case "image/gif" -> ".gif";
+            case "image/webp" -> ".webp";
+            case "image/svg+xml" -> ".svg";
+            default -> null;
+        };
+    }
+```
 
 ## Customizing the Mapper
 By default, the server uses a built-in JSON mapper. You can replace it with a custom implementation:
