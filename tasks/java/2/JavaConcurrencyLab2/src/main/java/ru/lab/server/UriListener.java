@@ -44,7 +44,9 @@ class UriListener {
             throw new HttpListenerBadRequestException("Syntax error found in the request body");
         }
         HTTPServer.HttpResponse response = listener.apply(headers, pathVariables, obj);
-        response.body = mapper.serialize(response.body);
+        if (!(response.body instanceof byte[])){
+            response.body = mapper.serialize(response.body);
+        }
         return response;
     }
 
@@ -54,7 +56,9 @@ class UriListener {
                 = (BiFunction<Map<String, String>, Map<String, String>, HTTPServer.HttpResponse>) this.listener;
         HTTPServer.HttpResponse response = listener.apply(headers, pathVariables);
 
-        response.body = mapper.serialize(response.body);
+        if (!(response.body instanceof byte[])){
+            response.body = mapper.serialize(response.body);
+        }
         return response;
     }
 
