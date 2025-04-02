@@ -208,6 +208,7 @@ public static void execute() {
         };
     }
 ```
+Alternatively, you can open the site with this path in the browser.
 
 ## Customizing the Mapper
 By default, the server uses a built-in JSON mapper. You can replace it with a custom implementation:
