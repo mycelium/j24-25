@@ -100,8 +100,8 @@ server.registerDeleteMethod(
 );
 ```
 Image loading
-Для отправки файлов при помощи реализованного сервера требуется получить изображение в виде массива байт, 
-который в дальнейшем потребуется передать в качестве тела в объект HttpResponse. 
+To send files using the implemented server, you need to get an image in the form of an array of bytes,
+which will later need to be passed as a body to the HttpResponse object.
 ```
 server.registerGetMethod("/image", byte[].class, (headers, pathVars) -> {
             try {
@@ -129,7 +129,7 @@ server.registerGetMethod("/image", byte[].class, (headers, pathVars) -> {
             }
         });
 ```
-После выполнения Get запроса по этому пути, вы получите массив байт этого изображения. Со стороны клиента потребуетс только получить Content-Type изображения и сохранить массив байт в качестве изображения с этим типом. Пример клиента для загрузки изображения:
+After executing a Get request along this path, you will receive an array of bytes of this image. The client only needs to get the Content-Type of the image and save the byte array as an image with this type. Example of a client for uploading an image:
 ```
 public static void execute() {
         String imageUrl = "http://localhost:30001/image";
