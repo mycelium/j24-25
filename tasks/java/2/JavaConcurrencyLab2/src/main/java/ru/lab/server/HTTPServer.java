@@ -2,7 +2,6 @@ package ru.lab.server;
 
 import org.apache.log4j.Logger;
 import ru.lab.parser.JSONParser;
-import ru.lab.server.exceptions.HttpListenerBadRequestException;
 import ru.lab.server.exceptions.HttpListenerNotFoundException;
 import ru.lab.server.exceptions.HttpServerException;
 
@@ -10,17 +9,23 @@ import ru.lab.server.exceptions.HttpServerException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.CancelledKeyException;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.BiFunction;
 
 public class HTTPServer {
     // Настройка сервера
+    private final Set<SocketChannel> activeChannels = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final ServerSocketChannel channel;
+    private Selector selector = Selector.open();
 
     // Настройка пула потоков
     private final ExecutorService executors;
@@ -91,10 +96,17 @@ public class HTTPServer {
     public void stop() {
         isRunning = false;
         try {
+            // Разбудим селектор для выхода из select()
+            if (selector != null) {
+                selector.wakeup();
+            }
             channel.close();
             executors.shutdown();
-        } catch (IOException e) {
-            logger.error("Error stopping server: " + e.getMessage());
+            if (!executors.awaitTermination(5, TimeUnit.SECONDS)) {
+                executors.shutdownNow();
+            }
+        } catch (IOException | InterruptedException e) {
+            logger.error("Error stopping server", e);
         }
     }
 
@@ -115,6 +127,11 @@ public class HTTPServer {
             this.statusMessage = statusMessage;
             this.headers = Objects.requireNonNullElseGet(headers, Map::of);
             this.body = body;
+        }
+
+        @Override
+        public String toString(){
+            return "HttpResponse(statusCode = " + statusCode + ", statusMessage = " + statusMessage + ", headers = " + headers + ", body = " + body.toString() + ")";
         }
     }
 
@@ -271,39 +288,108 @@ public class HTTPServer {
      */
     private void addSelector() throws IOException {
         // Создаём Selector для управления несколькими каналами
-        Selector selector = Selector.open();
+        selector = Selector.open();
         channel.register(selector, SelectionKey.OP_ACCEPT); // Регистрируем канал для принятия подключений
 
-        while (true) {
-            selector.select(); // Блокируемся, пока не появятся события
-            Set<SelectionKey> selectedKeys = selector.selectedKeys();
-            Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
+        while (isRunning) {
+            try {
+                int readyChannels = selector.select(5000);
+                if (!isRunning) break;
 
-            while (keyIterator.hasNext()) {
-                SelectionKey key = keyIterator.next();
+                if (readyChannels == 0) continue;
 
-                if (key.isAcceptable()) {
-                    // Принимаем новое подключение
-                    SocketChannel clientChannel = channel.accept();
-                    clientChannel.configureBlocking(false);
-                    clientChannel.register(selector, SelectionKey.OP_READ); // Регистрируем канал для чтения
-                    logger.info("New connection accepted: " + clientChannel.getRemoteAddress());
-                } else if (key.isReadable()) {
-                    // Обрабатываем входящие данные в отдельном потоке
-                    SocketChannel clientChannel = (SocketChannel) key.channel();
+                Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
+                while (keys.hasNext() && isRunning) {
+                    SelectionKey key = keys.next();
+                    keys.remove();
+
+                    if (!key.isValid()) continue;
+
                     try {
-                        HttpRequest request = readRequest(clientChannel);
-                        logger.info("Received request: " + request);
-                        executors.submit(() -> handleClientRequest(request, clientChannel));
+                        if (key.isAcceptable()) {
+                            acceptNewConnection();
+                        } else if (key.isReadable()) {
+                            processReadableKey(key);
+                        } else if (key.isWritable()) {
+                            processWritableKey(key);
+                        }
+                    } catch (CancelledKeyException e) {
+                        logger.debug("Key already cancelled");
                     } catch (IOException e) {
-                        logger.error("Error reading request: " + e.getMessage());
-                        clientChannel.close();
+                        logger.error("Error processing key", e);
+                        cancelKey(key);
                     }
                 }
+            } catch (ClosedSelectorException e) {
+                if (isRunning) {
+                    logger.error("Selector closed unexpectedly", e);
+                }
+                break;
+            } catch (IOException e) {
+                logger.error("Selector error", e);
+                if (isRunning) {
+                    try{
+                        Thread.sleep(1000); // Пауза при ошибке
+                    } catch (InterruptedException ex) {
+                        logger.error(e);
+                    }
 
-                keyIterator.remove(); // Удаляем обработанный ключ
+                }
             }
         }
+    }
+
+    private void processWritableKey(SelectionKey key) throws IOException {
+        SocketChannel clientChannel = (SocketChannel) key.channel();
+        ByteBuffer[] buffers = (ByteBuffer[]) key.attachment();
+
+        try {
+            while (buffers[0].hasRemaining() || buffers[1].hasRemaining()) {
+                if (!clientChannel.isOpen()) {
+                    cancelKey(key);
+                    return;
+                }
+                long written = clientChannel.write(buffers);
+                if (written == 0) {
+                    return;
+                }
+            }
+
+            // Все данные записаны - переключаем обратно на чтение
+            key.interestOps(SelectionKey.OP_READ);
+            key.attach(null);
+        } catch (IOException e) {
+            logger.error("Error writing to channel", e);
+            cancelKey(key);
+        }
+    }
+
+    private void acceptNewConnection() throws IOException {
+        SocketChannel clientChannel = channel.accept();
+        if (clientChannel != null) {
+            clientChannel.configureBlocking(false);
+            clientChannel.register(selector, SelectionKey.OP_READ);
+            activeChannels.add(clientChannel);
+            logger.info("New connection: " + clientChannel.getRemoteAddress());
+        }
+    }
+
+    private void processReadableKey(SelectionKey key) throws IOException {
+        SocketChannel clientChannel = (SocketChannel) key.channel();
+        if (!clientChannel.isOpen()) {
+            cancelKey(key);
+            return;
+        }
+
+        HttpRequest request = readRequest(clientChannel);
+        if (request != null) {
+            executors.submit(() -> handleClientRequest(request, clientChannel));
+        }
+    }
+
+    private void cancelKey(SelectionKey key) {
+        key.cancel();
+        closeChannelSilently((SocketChannel) key.channel());
     }
 
     /**
@@ -314,18 +400,29 @@ public class HTTPServer {
      * @throws IOException If an I/O error occurs while reading the data.
      */
     private HttpRequest readRequest(SocketChannel clientChannel) throws IOException {
-        ByteBuffer buffer = ByteBuffer.allocate(1024);
+        if (!clientChannel.isOpen()) {
+            return null;
+        }
+
+        ByteBuffer buffer = ByteBuffer.allocate(8192);
         StringBuilder requestBuilder = new StringBuilder();
 
-        while (true) {
+        int emptyReads = 0;
+        final int MAX_EMPTY_READS = 3;
+
+        while (emptyReads < MAX_EMPTY_READS) {
             int bytesRead = clientChannel.read(buffer);
             if (bytesRead == -1) {
-                clientChannel.close();
                 throw new IOException("Client closed connection");
+            } else if (bytesRead == 0) {
+                emptyReads++;
+                Thread.yield();
+                continue;
             }
 
+            emptyReads = 0;
             buffer.flip();
-            requestBuilder.append(new String(buffer.array(), 0, bytesRead));
+            requestBuilder.append(StandardCharsets.UTF_8.decode(buffer));
             buffer.clear();
 
             if (requestBuilder.toString().contains("\r\n\r\n")) {
@@ -338,6 +435,8 @@ public class HTTPServer {
                 );
             }
         }
+
+        throw new IOException("Incomplete request after multiple reads");
     }
 
     /**
@@ -348,44 +447,76 @@ public class HTTPServer {
      */
     private void handleClientRequest(HttpRequest request, SocketChannel clientChannel) {
         try {
-            // Формируем ответ
-            HttpResponse response;
-            try {
-                String listenerKey = generateListenerKey(request.method(), request.path());
-                UriListener listener = listeners.get(listenerKey);
-                if (listener == null) {
-                    throw new HttpListenerNotFoundException("No listener was found for this path.");
-                }
-                Map<String, String> pathVariables = HTTPRequestParser.extractPathVariables(listener.path, request.path());
-
-                switch (listener.type){
-                    case GET, DELETE -> response = listener.execute(request.headers(), pathVariables);
-                    case PUT, POST, PATCH -> response = listener.execute(request.headers(), pathVariables, request.body());
-                    default -> throw new IllegalArgumentException("Unsupported HTTP method: " + request);
-                }
-
-            } catch (HttpServerException e){
-                response = new HttpResponse(e.statusCode, e.statusMessage,
-                        Map.of("Content-Type", "text/plain"), e.getMessage());
-            } catch (IllegalArgumentException e) {
-                logger.error("Listener not found: " + e.getMessage(), e);
-                response = new HttpResponse(400, "Bad Request",
-                        Map.of("Content-Type", "text/plain"), e.getMessage());
-            } catch (Exception e){
-                logger.error("Error processing request: " + e.getMessage(), e);
-                response = new HttpResponse(500, "Internal Server Error",
-                        Map.of("Content-Type", "text/plain"), "An error occurred: " + e.getMessage());
+            if (!clientChannel.isOpen()) {
+                return;
             }
-
+            // Формируем ответ
+            HttpResponse response = processRequest(request);
             logger.info("Generated response: " + response);
 
             sendResponse(clientChannel, response);
 
             // Закрываем соединение после отправки ответа
             logger.info("Response sent to client: " + clientChannel.getRemoteAddress());
-            clientChannel.close();
+        } catch (Exception e) {
+            logger.error("Error handling request", e);
+            sendErrorResponse(clientChannel, 500, "Internal Server Error");
+        } finally {
+            closeChannelSilently(clientChannel);
+        }
+    }
+
+    private void closeChannelSilently(SocketChannel channel) {
+        try {
+            if (channel != null && channel.isOpen()) {
+                activeChannels.remove(channel);
+                channel.close();
+            }
         } catch (IOException e) {
-            logger.error("Error handling request: " + e.getMessage());
+            logger.debug("Error closing channel", e);
+        }
+    }
+
+    private void sendErrorResponse(SocketChannel channel, int code, String message) {
+        if (!channel.isOpen()) return;
+
+        HttpResponse errorResponse = new HttpResponse(
+                code, message,
+                Map.of("Content-Type", "text/plain"),
+                message
+        );
+
+        sendResponse(channel, errorResponse);
+    }
+
+    private HttpResponse processRequest(HttpRequest request) {
+        try {
+            String listenerKey = generateListenerKey(request.method(), request.path());
+            UriListener listener = listeners.get(listenerKey);
+
+            if (listener == null) {
+                throw new HttpListenerNotFoundException("No listener found for path");
+            }
+
+            Map<String, String> pathVariables = HTTPRequestParser.extractPathVariables(listener.path, request.path());
+
+            return switch (listener.type) {
+                case GET, DELETE -> listener.execute(request.headers(), pathVariables);
+                case PUT, POST, PATCH -> listener.execute(request.headers(), pathVariables, request.body());
+                default -> throw new IllegalArgumentException("Unsupported HTTP method: " + request);
+            };
+        } catch (HttpServerException e) {
+            logger.error("Request processing error", e);
+            return new HttpResponse(e.statusCode, e.statusMessage,
+                    Map.of("Content-Type", "text/plain"), e.getMessage());
+        } catch (IllegalArgumentException e) {
+            logger.error("Listener not found: " + e.getMessage(), e);
+            return new HttpResponse(400, "Bad Request",
+                    Map.of("Content-Type", "text/plain"), e.getMessage());
+        } catch (Exception e){
+            logger.error("Error processing request: " + e.getMessage(), e);
+            return new HttpResponse(500, "Internal Server Error",
+                    Map.of("Content-Type", "text/plain"), "An error occurred: " + e.getMessage());
         }
     }
 
@@ -401,7 +532,12 @@ public class HTTPServer {
      * @param response response data (status, headers, body)
      * @throws IOException when writing errors to the channel
      */
-    private void sendResponse(SocketChannel clientChannel, HttpResponse response) throws IOException {
+    private void sendResponse(SocketChannel clientChannel, HttpResponse response) {
+        if (!clientChannel.isOpen()) {
+            logger.debug("Attempt to write to closed channel");
+            return;
+        }
+
         StringBuilder responseBuilder = new StringBuilder();
         responseBuilder.append("HTTP/1.1 ")
                 .append(response.statusCode)
@@ -431,7 +567,39 @@ public class HTTPServer {
         ByteBuffer headerBuffer = ByteBuffer.wrap(responseBuilder.toString().getBytes());
         ByteBuffer bodyBuffer = ByteBuffer.wrap(bodyBytes);
 
-        clientChannel.write(new ByteBuffer[]{headerBuffer, bodyBuffer});
+        if (!clientChannel.isOpen() || !clientChannel.isConnected()) {
+            logger.warn("Attempt to write to closed channel");
+            return;
+        }
+
+
+        try {
+            ByteBuffer[] buffers = new ByteBuffer[]{headerBuffer, bodyBuffer};
+            // неблокирующая запись
+            while (buffers[0].hasRemaining() || buffers[1].hasRemaining()) {
+                if (!clientChannel.isOpen()) {
+                    logger.debug("Channel closed during write");
+                    return;
+                }
+                long written = clientChannel.write(buffers);
+                if (written == 0) {
+                    // Регистрируем интерес на запись
+                    SelectionKey key = clientChannel.keyFor(selector);
+                    if (key != null && key.isValid()) {
+                        key.interestOps(SelectionKey.OP_WRITE);
+                        key.attach(buffers);
+                    }
+                    return;
+                }
+            }
+            clientChannel.write(new ByteBuffer[]{headerBuffer, bodyBuffer});
+        } catch (ClosedChannelException e) {
+            logger.debug("Client closed connection prematurely");
+            closeChannelSilently(clientChannel);
+        } catch (IOException e) {
+            logger.error("IO error writing response", e);
+            closeChannelSilently(clientChannel);
+        }
     }
 
     /**
