@@ -4,7 +4,11 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -67,6 +71,54 @@ public class JSONParserInheritanceTest {
             this.childField = childField;
         }
     }
+
+    private static class AnimalPart {
+        String name = "part";
+        public String getName() {
+            return name;
+        }
+    }
+
+    private static class Tail extends AnimalPart {
+        double lenght = 10.2;
+        public Tail() {
+            name = "Pretty fluffy tail";
+        }
+    }
+
+    private static class Claw extends AnimalPart {
+        public Claw() {
+            name = "claw";
+        }
+        @Override
+        public String getName() {
+            return "Sharp claw";
+        }
+    }
+
+    private static class Paw extends AnimalPart {
+        boolean isFront = true;
+        List<Claw> claws = new ArrayList<>();
+        public Paw(boolean isFront, Claw... claws) {
+            name = "paw";
+            this.isFront = isFront;
+            this.claws.addAll(Arrays.asList(claws));
+        }
+        @Override
+        public String getName() {
+            return isFront ? "Front paw" : "Back paw";
+        }
+    }
+
+    private static class Cat {
+        List<AnimalPart> parts = new LinkedList<>();
+        public Cat(@ParamName("tail") Tail tail, Paw... paws) {
+            super();
+            parts.add(tail);
+            parts.addAll(Arrays.asList(paws));
+        }
+    }
+
 
     @Test
     void testSimpleInheritanceSerialization() {
@@ -143,6 +195,75 @@ public class JSONParserInheritanceTest {
             throw new NoSuchFieldException(fieldName);
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    public void parseCats(){
+        String json = "{\"parts\":[{\"lenght\":10.2,\"name\":\"Pretty fluffy tail\"},{\"claws\":[{\"name\":\"claw\"}," +
+                "{\"name\":\"claw\"},{\"name\":\"claw\"},{\"name\":\"claw\"}],\"isFront\":true,\"name\":\"paw\"}," +
+                "{\"claws\":[{\"name\":\"claw\"},{\"name\":\"claw\"},{\"name\":\"claw\"},{\"name\":\"claw\"}]," +
+                "\"isFront\":true,\"name\":\"paw\"},{\"claws\":[{\"name\":\"claw\"},{\"name\":\"claw\"}," +
+                "{\"name\":\"claw\"},{\"name\":\"claw\"}],\"isFront\":false,\"name\":\"paw\"},{\"claws\":[" +
+                "{\"name\":\"claw\"},{\"name\":\"claw\"},{\"name\":\"claw\"},{\"name\":\"claw\"}]," +
+                "\"isFront\":false,\"name\":\"paw\"}]}";
+
+        JSONParser.addDeserializer((map) -> {
+            List<HashMap<String, Object>> parts = (List) map.get("parts");
+            Tail tail = null;
+            List<Paw> paws = new ArrayList<>();
+            for(var part: parts){
+                try{
+                    tail = JSONParser.fillClazzWithMap(part, Tail.class);
+                } catch (Exception e){}
+                try{
+                    paws.addLast(JSONParser.fillClazzWithMap(part, Paw.class));
+                } catch (Exception e){}
+            }
+            return new Cat(tail, paws.toArray(Paw[]::new));
+        }, Cat.class);
+
+        JSONParser.addDeserializer((map) -> {
+            String name = (String) map.get("name");
+            Boolean isFront = (Boolean) map.get("isFront");
+            List<Claw> claws = ((List<Map<String, Object>>) map.get("claws")).stream().map((claw) ->
+                    JSONParser.fillClazzWithMap(claw, Claw.class)
+            ).toList();
+            return new Paw(isFront, claws.toArray(Claw[]::new));
+        }, Paw.class);
+
+        Cat cat = JSONParser.readJsonToEntity(json, Cat.class);
+
+        // Проверки
+        assertNotNull(cat);
+        assertNotNull(cat.parts);
+        assertEquals(5, cat.parts.size()); // 1 хвост + 4 лапы
+
+        // Проверка хвоста
+        AnimalPart tail = cat.parts.get(0);
+        assertTrue(tail instanceof Tail);
+        assertEquals("Pretty fluffy tail", tail.getName());
+        assertEquals(10.2, ((Tail) tail).lenght);
+
+        // Проверка лап
+        for (int i = 1; i < 5; i++) {
+            AnimalPart part = cat.parts.get(i);
+            assertTrue(part instanceof Paw);
+            Paw paw = (Paw) part;
+
+            if (i < 3) {
+                assertTrue(paw.isFront); // Первые две лапы - передние
+                assertEquals("Front paw", paw.getName());
+            } else {
+                assertFalse(paw.isFront); // Последние две - задние
+                assertEquals("Back paw", paw.getName());
+            }
+
+            assertNotNull(paw.claws);
+            assertEquals(4, paw.claws.size()); // По 4 когтя на каждой лапе
+            for (Claw claw : paw.claws) {
+                assertEquals("Sharp claw", claw.getName());
+            }
         }
     }
 }

@@ -3,17 +3,59 @@ package ru.lab.parser;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.IntStream;
 
 
 public class JSONParser {
 
-    private static <T> T fillClazzWithMap(Map<String, Object> map, Class<T> clazz) {
+    /**
+     * A thread-safe map storing registered deserializers, where keys are classes
+     * and values are their corresponding {@link JSONDeserializer} instances.
+     */
+    private static Map<Class<?>, JSONDeserializer<?>> deserializers = new ConcurrentHashMap<>();
+
+    /**
+     * Registers a custom deserializer for the specified class.
+     *
+     * @param <T>         the type of object the deserializer can handle
+     * @param deserializer the deserializer to be registered
+     * @param clazz        the class for which the deserializer is registered
+     * @throws NullPointerException if either {@code deserializer} or {@code clazz} is null
+     */
+    public static <T> void addDeserializer(JSONDeserializer<T> deserializer, Class<T> clazz) {
+        deserializers.put(clazz, deserializer);
+    }
+
+    /**
+     * A functional interface defining a JSON deserializer.
+     * Implementations of this interface convert a parsed JSON structure (represented as a {@link Map})
+     * into an object of type {@code T}.
+     *
+     * @param <T> the type of object to be deserialized
+     */
+    @FunctionalInterface
+    public interface JSONDeserializer<T> {
+        /**
+         * Deserializes a JSON map into an object of type {@code T}.
+         *
+         * @param mappedJson the JSON data represented as a map of keys to values
+         * @return the deserialized object
+         * @throws IllegalArgumentException if the JSON structure is invalid for the target type
+         */
+         T deserialize(Map<String, Object> mappedJson);
+    }
+
+    public static <T> T fillClazzWithMap(Map<String, Object> map, Class<T> clazz) {
         try {
-            List<Object> arguments = new ArrayList<>();
-            Constructor<?>[] constructors = clazz.getDeclaredConstructors();
+            if (deserializers.containsKey(clazz)){
+                return (T) deserializers.get(clazz).deserialize(map);
+            }
+            Map<String, Object> argumentsMap = new HashMap<>();
+            List<Object> argumentsList = new ArrayList<>();
 
             // Обходим все поля класса, включая поля родительских классов
             Class<?> currentClass = clazz;
@@ -58,22 +100,62 @@ public class JSONParser {
                             }
                         }
 
-                        arguments.add(value);
+                        argumentsMap.put(fieldName, value);
+                        argumentsList.add(value);
                     }
                 }
                 currentClass = currentClass.getSuperclass();
             }
 
-            for (Constructor<?> constructor: constructors) {
-                try {
-                    constructor.setAccessible(true);
-                    return (T) constructor.newInstance(arguments.toArray());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
+            return createInstance(argumentsList, argumentsMap, clazz);
         } catch (Exception e) {
             throw new RuntimeException("Failed to convert map to object", e);
+        }
+    }
+
+    private static <T> T createInstance(List<Object> argumentsList, Map<String, Object> argumentsMap, Class<?> clazz){
+        Constructor<?>[] constructors = clazz.getDeclaredConstructors();
+
+        for (Constructor<?> constructor: constructors) {
+            // пробуем порядок, соответствующий полям класса
+            try {
+                constructor.setAccessible(true);
+                return (T) constructor.newInstance(argumentsList.toArray());
+            } catch (Exception e) {}
+
+            // пробуем проверить аннотации
+            try {
+                Parameter[] parameters = constructor.getParameters();
+                Object[] args = new Object[parameters.length];
+
+                // Сопоставляем параметры с данными из Map
+                for (int i = 0; i < parameters.length; i++) {
+                    ParamName paramName = parameters[i].getAnnotation(ParamName.class);
+                    if (paramName == null) {
+                        break;
+                    }
+
+                    String key = paramName.value(); // Получаем имя параметра из аннотации
+                    Object value = argumentsMap.get(key);    // Берём значение из Map по ключу
+
+                    args[i] = value;
+                }
+
+                // Создаём экземпляр класса
+                return (T) constructor.newInstance(args);
+            } catch (Exception e) {}
+
+            // пробуем порядок, если работает опция -parameters в компиляторе Java
+            try {
+                Parameter[] params = constructor.getParameters();
+                // Сопоставляем аргументы с именами параметров
+                Object[] args = new Object[params.length];
+                for (int i = 0; i < params.length; i++) {
+                    args[i] = argumentsMap.get(params[i].getName());
+                }
+                constructor.setAccessible(true);
+                return (T) constructor.newInstance(args);
+            } catch (Exception e) {}
         }
         throw new RuntimeException("Failed to convert map to object");
     }
@@ -160,6 +242,28 @@ public class JSONParser {
             case "Boolean", "boolean" -> Boolean.valueOf(json);
             default -> throw new IllegalArgumentException("Unsupported primitive type: " + clazz.getName());
         };
+    }
+
+    private static Object convertNumber(Object value, Class<?> targetType) {
+        if (value == null) return null;
+
+        try {
+            if (value instanceof Number number) {
+                if (targetType == Double.class || targetType == double.class) return number.doubleValue();
+                if (targetType == Float.class || targetType == float.class) return number.floatValue();
+                if (targetType == Long.class || targetType == long.class) return number.longValue();
+                if (targetType == Integer.class || targetType == int.class) return number.intValue();
+                if (targetType == Short.class || targetType == short.class) return number.shortValue();
+                if (targetType == Byte.class || targetType == byte.class) return number.byteValue();
+            }
+        } catch (NumberFormatException e) {
+            throw new RuntimeException(String.format(
+                    "Failed to convert '%s' to %s",
+                    value,
+                    targetType.getSimpleName()
+            ), e);
+        }
+        return value;
     }
 
     private static <T> T parseJsonArrayToArray(String json, Class<T> clazz) {

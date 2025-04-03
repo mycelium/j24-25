@@ -26,6 +26,10 @@ tasks.withType<Jar> {
     archiveBaseName.set(jarBaseName)
 }
 
+//tasks.withType<JavaCompile> {
+//    options.compilerArgs.add("-parameters")
+//}
+
 task("fatJar", type = Jar::class) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     manifest {
