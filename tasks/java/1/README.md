@@ -62,10 +62,106 @@ public class Person {
 }
 ```
 
+### 6. Difficult cases
+There are problems that JsonParser cannot handle on its own. For example:
+```java
+    private static class AnimalPart {
+        String name = "part";
+        public String getName() {
+            return name;
+        }
+    }
+
+    private static class Tail extends AnimalPart {
+        double lenght = 10.2;
+        public Tail() {
+            name = "Pretty fluffy tail";
+        }
+    }
+
+    private static class Claw extends AnimalPart {
+        public Claw() {
+            name = "claw";
+        }
+        @Override
+        public String getName() {
+            return "Sharp claw";
+        }
+    }
+
+    private static class Paw extends AnimalPart {
+        boolean isFront = true;
+        List<Claw> claws = new ArrayList<>();
+        public Paw(boolean isFront, Claw... claws) {
+            name = "paw";
+            this.isFront = isFront;
+            this.claws.addAll(Arrays.asList(claws));
+        }
+        @Override
+        public String getName() {
+            return isFront ? "Front paw" : "Back paw";
+        }
+    }
+
+    private static class Cat {
+        List<AnimalPart> parts = new LinkedList<>();
+        public Cat(Tail tail, Paw... paws) {
+            super();
+            parts.add(tail);
+            parts.addAll(Arrays.asList(paws));
+        }
+    }
+```
+In this case we can see:
+* **Ambiguity of types**: JSON does not store information about types (Tail, Paw, Claw — they all look like objects in JSON). Without explicit hints, the parser will not understand which class to deserialize AnimalPart into.
+* **Incorrect order of elements**: The variable argument must be the last in the constructor. If the order of the fields in JSON does not match (for example, paws is specified before tail), deserialization will fail.
+
+To solve such problems, you need to use the static method **JSONParser.addDeserializer( JSONParser. JSONDeserializer<T> deserializer, Class<T> clazz)**:
+```java
+JSONParser.addDeserializer((map) -> {
+            List<HashMap<String, Object>> parts = (List) map.get("parts");
+            Tail tail = null;
+            List<Paw> paws = new ArrayList<>();
+            for(var part: parts){
+                try{
+                    tail = JSONParser.fillClazzWithMap(part, Tail.class);
+                } catch (Exception e){}
+                try{
+                    paws.addLast(JSONParser.fillClazzWithMap(part, Paw.class));
+                } catch (Exception e){}
+            }
+            return new Cat(tail, paws.toArray(Paw[]::new));
+        }, Cat.class);
+
+        JSONParser.addDeserializer((map) -> {
+            String name = (String) map.get("name");
+            Boolean isFront = (Boolean) map.get("isFront");
+            List<Claw> claws = ((List<Map<String, Object>>) map.get("claws")).stream().map((claw) ->
+                    JSONParser.fillClazzWithMap(claw, Claw.class)
+            ).toList();
+            return new Paw(isFront, claws.toArray(Claw[]::new));
+        }, Paw.class);
+```
+**addDeserializer** method registers a custom deserializer for the specified class.
+
+If you only have a problem with the order of the arguments, then I advise you to use the **@ParamName** annotation:
+```java
+private static class Cat {
+        List<AnimalPart> parts = new LinkedList<>();
+        public Cat(@ParamName("tail") Tail tail, Paw... paws) {
+            super();
+            parts.add(tail);
+            parts.addAll(Arrays.asList(paws));
+        }
+    }
+```
+If you mark all the constructor parameters with this annotation, then you don't have to worry about the order.
+
 ## Limitations
 * The library does not support complex JSON structures like mixed types in arrays.
 * It assumes that the JSON structure matches the Java object structure.
 * Error handling is basic and may not cover all edge cases.
+* The constructor that will be used to create the object must be defined. The number of parameters and types of parameters of the JSON object must be reduced to the parameters of this constructor.
 
 ## Dependencies
 This library has no external dependencies and uses only standard Java libraries.
