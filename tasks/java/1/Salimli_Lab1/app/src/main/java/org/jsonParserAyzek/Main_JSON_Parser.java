@@ -36,7 +36,14 @@ class minUI{
 }
 
 public class Main_JSON_Parser {
-
+    private static List<Field> fieldList(Class<?> maybeClass){
+        List<Field> fields = new ArrayList<>();
+        while(maybeClass != null){
+            fields.addAll(Arrays.asList(maybeClass.getDeclaredFields()));
+            maybeClass = maybeClass.getSuperclass();
+        }
+        return fields;
+    }
     public static Map<String, Object> JSONIntoMAP(String json) {
         json = json.trim();
         if (!json.startsWith("{") || !json.endsWith("}")) {
@@ -148,12 +155,11 @@ public class Main_JSON_Parser {
     }
 
     private static List<Object> parsingJSON_Array(String json) {
-        json = json.substring(1, json.length() - 1).trim();
-        List<Object> list = new ArrayList<>();
         if (!json.startsWith("[") || !json.endsWith("]")) {
             throw new IllegalArgumentException("Неправильный формат JSON массива");
         }
         String inner = json.substring(1, json.length() - 1).trim();
+        List<Object> list = new ArrayList<>();
         if (inner.isEmpty()) {
             return list;
         }
@@ -205,41 +211,100 @@ public class Main_JSON_Parser {
             }
         }
     }
-
-    public static <T> T JSONToObj(String json, Class<T> tempObj) throws Exception {
-        Map<String, Object> map = JSONIntoMAP(json);
-        T obj = tempObj.getDeclaredConstructor().newInstance();
-        for (Field field : tempObj.getDeclaredFields()) {
-            field.setAccessible(true);
-            Object value = map.get(field.getName());
-            if (value instanceof List && field.getType().isArray()) {
-                List<?> list = (List<?>) value;
-                Class<?> compType = field.getType().getComponentType();
-                Object array = Array.newInstance(compType, list.size());
-                for (int i = 0; i < list.size(); i++) {
-                    Array.set(array, i, list.get(i));
-                }
-                value = array;
+    private static String mapToJsonString(Map<String, Object> map) throws IllegalAccessException {
+        StringBuilder sb = new StringBuilder("{");
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            sb.append("\"").append(entry.getKey()).append("\":");
+            Object val = entry.getValue();
+            if (val instanceof Map) {
+                sb.append(mapToJsonString((Map<String, Object>) val));
+            } else if (val instanceof List) {
+                sb.append(listToJsonString((List<Object>) val));
+            } else if (val instanceof String) {
+                sb.append("\"").append(val).append("\"");
+            } else {
+                sb.append(val);
             }
-            field.set(obj, value);
+            sb.append(",");
         }
-        return obj;
+        if (sb.charAt(sb.length() - 1) == ',')
+            sb.deleteCharAt(sb.length() - 1);
+        sb.append("}");
+        return sb.toString();
+    }
+
+    private static String listToJsonString(List<Object> list) throws IllegalAccessException {
+        StringBuilder sb = new StringBuilder("[");
+        for (Object item : list) {
+            if (item instanceof Map) {
+                sb.append(mapToJsonString((Map<String, Object>) item));
+            } else if (item instanceof List) {
+                sb.append(listToJsonString((List<Object>) item));
+            } else if (item instanceof String) {
+                sb.append("\"").append(item).append("\"");
+            } else {
+                sb.append(item);
+            }
+            sb.append(",");
+        }
+        if (sb.charAt(sb.length() - 1) == ',')
+            sb.deleteCharAt(sb.length() - 1);
+        sb.append("]");
+        return sb.toString();
     }
 
     public static String toJSON(Object obj) throws IllegalAccessException {
+        if (obj == null) return "null";
         StringBuilder json = new StringBuilder("{");
-        Field[] fields = obj.getClass().getDeclaredFields();
+        List<Field> fields = fieldList(obj.getClass());
         for (Field field : fields) {
             field.setAccessible(true);
             json.append("\"").append(field.getName()).append("\":");
             Object value = field.get(obj);
             json.append(Values(value)).append(",");
         }
-        if (json.charAt(json.length() - 1) == ',') {
+        if(json.charAt(json.length() -1) == ','){
             json.deleteCharAt(json.length() - 1);
         }
         json.append("}");
         return json.toString();
+    }
+
+    public static <T> T JSONToObj(String json, Class<T> tempObj) throws Exception {
+        Map<String, Object> map = JSONIntoMAP(json);
+        Class<?> justClass = tempObj;
+        Object obj = justClass.getDeclaredConstructor().newInstance();
+        List<Field> fields = fieldList(justClass);
+        for (Field field : fields) {
+            field.setAccessible(true);
+            if (map.containsKey(field.getName())) {
+                Object value = map.get(field.getName());
+                if (value instanceof Map) {
+                    value = JSONToObj(mapToJsonString((Map<String, Object>) value), field.getType());
+                } else if (value instanceof List && Collection.class.isAssignableFrom(field.getType())) {
+                    List<?> origList = (List<?>) value;
+                    List<Object> convertedList = new ArrayList<>();
+                    Type genericType = field.getGenericType();
+                    Class<?> elementType = Object.class;
+                    if (genericType instanceof ParameterizedType) {
+                        ParameterizedType pt = (ParameterizedType) genericType;
+                        Type[] typeArgs = pt.getActualTypeArguments();
+                        if (typeArgs != null && typeArgs.length > 0 && typeArgs[0] instanceof Class) {
+                            elementType = (Class<?>) typeArgs[0];
+                        }
+                    }
+                    for (Object elem : origList) {
+                        if (elem instanceof Map) {
+                            elem = JSONToObj(mapToJsonString((Map<String, Object>) elem), elementType);
+                        }
+                        convertedList.add(elem);
+                    }
+                    value = convertedList;
+                }
+                field.set(obj, value);
+            }
+        }
+        return tempObj.cast(obj);
     }
 
     private static String Values(Object value) throws IllegalAccessException {
@@ -268,7 +333,56 @@ public class Main_JSON_Parser {
         if (value instanceof  Number || value instanceof Boolean) return value.toString();
         return toJSON(value);
     }
+    ////////////////////////////////////////// Пример из ТГ про котиков 😺 //////////////////////////////////////////////////////////
+    public static class AnimalPart {
+        String name = "part";
+        public String getName() {
+            return name;
+        }
+    }
+    public static class Tail extends AnimalPart {
+        double lenght = 10.2;
+        public Tail() {
+            name = "Pretty fluffy tail";
+        }
+    }
+    public static class Claw extends AnimalPart {
+        public Claw() {
+            name = "claw";
+        }
+        @Override
+        public String getName() {
+            return "Sharp claw";
+        }
+    }
+    public static class Paw extends AnimalPart {
+        boolean isFront = true;
+        List<Claw> claws = new ArrayList<>();
+        public Paw(boolean isFront, Claw... claws) {
+            name = "paw";
+            this.isFront = isFront;
+            this.claws.addAll(Arrays.asList(claws));
+        }
+        public Paw() {
+            name = "paw";
+        }
 
+        @Override
+        public String getName() {
+            return isFront ? "Front paw" : "Back paw";
+        }
+    }
+
+    public static class Cat {
+        List<AnimalPart> parts = new LinkedList<>();
+        public Cat(Tail tail, Paw... paws) {
+            parts.add(tail);
+            parts.addAll(Arrays.asList(paws));
+        }
+        public Cat() {
+        }
+    }
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     public static void main(String[] args) throws Exception {
         minUI ui = new minUI();
         String json = "{\"mark\":\"Volvo\",\"model\":\"X90\",\"v\":12, \"crashed_Painted\": false}";
@@ -304,6 +418,32 @@ public class Main_JSON_Parser {
         } catch (IOException e) {
             System.out.println("Упс! Запись не удалась");
             ui.end("Запись в файл");
+        }
+        Cat cat = new Cat(
+                new Tail(),
+                new Paw(true, new Claw(), new Claw(), new Claw(), new Claw()),
+                new Paw(true, new Claw(), new Claw(), new Claw(), new Claw()),
+                new Paw(false, new Claw(), new Claw(), new Claw(), new Claw()),
+                new Paw(false, new Claw(), new Claw(), new Claw(), new Claw())
+        );
+
+        ui.start("Сериализация кошки )");
+        String catJson = toJSON(cat);
+        System.out.println(": \tCat JSON: " + catJson);
+        ui.end("Сериализация кошки )");
+        ui.start("Десериализация кошки (");
+        Cat catParsed = JSONToObj(catJson, Cat.class);
+        System.out.println(": \tCat parts:");
+        for (AnimalPart part : catParsed.parts) {
+            System.out.println("    " + part.getName());
+        }
+        ui.end("Десериализация кошки (");
+        try {
+            FileWriter jsonW = new FileWriter("kotiki.json", false);
+            jsonW.write(toJSON(cat));
+            jsonW.close();
+        } catch (IOException e) {
+            System.out.println("Упс! Запись не удалась");
         }
     }
 }
