@@ -1,11 +1,12 @@
 package ru.spbstu.hsai.jsparser;
-
+import sun.reflect.ReflectionFactory;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class JsonDeserializer {
+
 
     record MapPair(Map<String, Object> resultMap, int index) {}
     record ListPair(List<Object> resultList, int index) {};
@@ -105,25 +106,34 @@ public class JsonDeserializer {
         throw new IllegalArgumentException("Unknown token format");
     }
 
-    public static <T> T TokensToClass(Class<T> convertClass, Map<String, Object> jsonTokens){
-        try{
-            T instance = convertClass.getDeclaredConstructor().newInstance();
+
+    public static <T> T TokensToClass(Class<T> convertClass, Map<String, Object> jsonTokens) {
+        try {
+            ReflectionFactory rf = ReflectionFactory.getReflectionFactory();
+            Constructor<?> objDef = Object.class.getDeclaredConstructor();
+            Constructor<T> intConstr = (Constructor<T>) rf.newConstructorForSerialization(convertClass, objDef);
+            T instance = intConstr.newInstance();
+
             List<Field> allFields = getAllFields(convertClass);
-            for (Field field: allFields){
+            for (Field field : allFields) {
                 field.setAccessible(true);
                 String fieldName = "\"" + field.getName() + "\"";
                 Class<?> fieldType = field.getType();
-                if (jsonTokens.containsKey(fieldName)){
+                if (jsonTokens.containsKey(fieldName)) {
                     Object value = jsonTokens.get(fieldName);
                     Object convertValue = convertValue(value, fieldType);
                     field.set(instance, convertValue);
                 }
             }
+
             return instance;
-        }catch (Exception e){
-            throw new RuntimeException("Convert to class is failed");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Convert to class is failed: " + e.getMessage());
         }
     }
+
 
     private static Object convertValue(Object value, Class<?> fieldType) throws Exception {
         if (value == null){
@@ -213,7 +223,12 @@ public class JsonDeserializer {
         Class<?> elementClass = (Class<?>) elementType;
 
         for (Object item : value) {
-            resultCollection.add(convertValue(item, elementClass));
+            if (item instanceof Map) {
+                // Если элемент — Map (например, {"type": "tail", ...}), рекурсивно вызываем TokensToClass
+                resultCollection.add(TokensToClass(elementClass, (Map<String, Object>) item));
+            } else {
+                resultCollection.add(convertValue(item, elementClass));
+            }
         }
 
         return resultCollection;
