@@ -34,7 +34,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "org.example.Main_JSON_Parser"
+    mainClass = "org.jsonParserAyzek.Main_JSON_Parser"
 }
 
 tasks.named<Test>("test") {

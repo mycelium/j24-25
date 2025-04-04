@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.lang.reflect.*;
 import java.util.*;
 
-class minUI{
+class MinUI {
     private static final int length = 40;
     public void start(String ttask){
         System.out.println();
@@ -384,7 +384,7 @@ public class Main_JSON_Parser {
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     public static void main(String[] args) throws Exception {
-        minUI ui = new minUI();
+        MinUI ui = new MinUI();
         String json = "{\"mark\":\"Volvo\",\"model\":\"X90\",\"v\":12, \"crashed_Painted\": false}";
         Map<String, Object> map = JSONIntoMAP(json);
 
