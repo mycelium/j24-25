@@ -1,6 +1,7 @@
 package ru.spbstu.telematics.json.jsoninteraction;
 
 import ru.spbstu.telematics.json.exceptions.WrongJsonStringFormatException;
+import sun.misc.Unsafe;
 
 import java.io.*;
 import java.lang.reflect.Constructor;
@@ -169,7 +170,7 @@ public class JsonReader implements JsonInteractor {
      * @throws IllegalAccessException if it cannot get access to {@code fillingClass}'s constructor
      * @throws NoSuchFieldException if there is no such field in {@code fillingClass}
      */
-    static public <T> T fromJsonNewObject(String json, Class<T> fillingClass)
+    public static <T> T fromJsonNewObject(String json, Class<T> fillingClass)
             throws WrongJsonStringFormatException,
             InstantiationException,
             IllegalAccessException,
@@ -183,67 +184,97 @@ public class JsonReader implements JsonInteractor {
             throw new WrongJsonStringFormatException("JSON must be enclosed in curly braces");
         }
 
+        // Пытаемся создать экземпляр через конструктор без параметров
+        T object;
         try {
-            // Создаем экземпляр целевого класса
             Constructor<T> constructor = fillingClass.getDeclaredConstructor();
             constructor.setAccessible(true);
-            T object = constructor.newInstance();
-
-            // Убираем { } и разделяем JSON на пары ключ-значение
-            json = json.substring(1, json.length() - 1).strip();
-            List<String> keyValuePairs = splitJson(json);
-
-            for (String pair : keyValuePairs) {
-                String[] keyValue = pair.split(":", 2);
-                if (keyValue.length != 2) {
-                    throw new WrongJsonStringFormatException("Invalid key-value pair: " + pair);
-                }
-
-                // Получаем имя поля и его значение
-                String fieldName = keyValue[0].strip().replaceAll("^\"|\"$", "");
-                String fieldValue = keyValue[1].strip();
-
-                // Находим поле в классе или его суперклассах
-                Field field = null;
-                Class<?> cls = fillingClass;
-                while (cls != null) {
-                    try {
-                        field = cls.getDeclaredField(fieldName);
-                        break;
-                    } catch (NoSuchFieldException e) {
-                        cls = cls.getSuperclass();
-                    }
-                }
-                if (field == null) {
-                    throw new NoSuchFieldException("There is no field " + fieldName + " in " + fillingClass);
-                }
-                field.setAccessible(true);
-                Class<?> fieldType = field.getType();
-
-                // Проверяем, является ли поле коллекцией
-                Object parsedValue;
-                if (Collection.class.isAssignableFrom(fieldType)) {
-                    ParameterizedType genericType = (ParameterizedType) field.getGenericType();
-                    Class<?> collectionElementType = (Class<?>) genericType.getActualTypeArguments()[0];
-
-                    Supplier<Collection<Object>> collectionSupplier = getCollectionSupplier(fieldType);
-                    Collection<Object> collection = parseArray(fieldValue, collectionSupplier, collectionElementType);
-                    parsedValue = collection;
-                }
-                // Если поле является вложенным объектом
-                else if (fieldValue.startsWith("{") && fieldValue.endsWith("}")) {
-                    Object nestedObject = fromJsonNewObject(fieldValue, fieldType);
-                    parsedValue = nestedObject;
-                }
-                // Примитивные типы и строки
-                else {
-                    parsedValue = parseValue(fieldValue);
-                }
-                field.set(object, parsedValue);
-            }
-            return object;
+            object = constructor.newInstance();
         } catch (NoSuchMethodException | InvocationTargetException e) {
-            throw new RuntimeException("Cannot instantiate object of class " + fillingClass, e);
+            // Если конструктора нет, используем Unsafe для создания объекта без вызова конструктора
+            object = (T) UnsafeCreator.allocateInstance(fillingClass);
+        }
+
+        // Убираем { } и разделяем JSON на пары ключ-значение
+        json = json.substring(1, json.length() - 1).trim();
+        List<String> keyValuePairs = splitJson(json);
+
+        for (String pair : keyValuePairs) {
+            String[] keyValue = pair.split(":", 2);
+            if (keyValue.length != 2) {
+                throw new WrongJsonStringFormatException("Invalid key-value pair: " + pair);
+            }
+
+            // Получаем имя поля и его значение
+            String fieldName = keyValue[0].trim().replaceAll("^\"|\"$", "");
+            String fieldValue = keyValue[1].trim();
+
+            // Находим поле в классе или его суперклассах
+            Field field = null;
+            Class<?> cls = fillingClass;
+            while (cls != null) {
+                try {
+                    field = cls.getDeclaredField(fieldName);
+                    break;
+                } catch (NoSuchFieldException ex) {
+                    cls = cls.getSuperclass();
+                }
+            }
+            if (field == null) {
+                throw new NoSuchFieldException("There is no field " + fieldName + " in " + fillingClass);
+            }
+            field.setAccessible(true);
+            Class<?> fieldType = field.getType();
+
+            Object parsedValue;
+            // Если поле является коллекцией
+            if (Collection.class.isAssignableFrom(fieldType)) {
+                ParameterizedType genericType = (ParameterizedType) field.getGenericType();
+                Class<?> collectionElementType = (Class<?>) genericType.getActualTypeArguments()[0];
+
+                Supplier<Collection<Object>> collectionSupplier = getCollectionSupplier(fieldType);
+                Collection<Object> collection = parseArray(fieldValue, collectionSupplier, collectionElementType);
+                parsedValue = collection;
+            }
+            // Если поле является вложенным объектом
+            else if (fieldValue.startsWith("{") && fieldValue.endsWith("}")) {
+                Object nestedObject = fromJsonNewObject(fieldValue, fieldType);
+                parsedValue = nestedObject;
+            }
+            // Примитивные типы и строки
+            else {
+                parsedValue = parseValue(fieldValue);
+            }
+            field.set(object, parsedValue);
+        }
+        return object;
+    }
+
+    /**
+     * Utility class for creating instances of classes without invoking their constructors.
+     */
+    static class UnsafeCreator {
+        private static final Unsafe unsafe;
+
+        static {
+            try {
+                Field f = Unsafe.class.getDeclaredField("theUnsafe");
+                f.setAccessible(true);
+                unsafe = (Unsafe) f.get(null);
+            } catch (Exception e) {
+                throw new RuntimeException("Unable to obtain Unsafe instance", e);
+            }
+        }
+
+        /**
+         * Allocates an instance of the specified class without invoking any constructor.
+         *
+         * @param clazz the Class object representing the type to instantiate.
+         * @return a new instance of the specified class.
+         * @throws InstantiationException if the instance cannot be allocated.
+         */
+        public static Object allocateInstance(Class<?> clazz) throws InstantiationException {
+            return unsafe.allocateInstance(clazz);
         }
     }
 

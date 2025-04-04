@@ -144,6 +144,74 @@ public class App {
         }
     }
 
+    private static class AnimalPart {
+        String name = "part";
+        public String getName() {
+            return name;
+        }
+    }
+
+    private static class Tail extends AnimalPart {
+        double lenght = 10.2;
+        public Tail() {
+            name = "Pretty fluffy tail";
+        }
+
+        @Override
+        public String toString() {
+            return "Tail{name='" + name + "', lenght=" + lenght + "}";
+        }
+    }
+
+    private static class Claw extends AnimalPart {
+        public Claw() {
+            name = "claw";
+        }
+        @Override
+        public String getName() {
+            return "Sharp claw";
+        }
+
+        @Override
+        public String toString() {
+            return "Claw{name='" + name + "'}";
+        }
+    }
+
+    private static class Paw extends AnimalPart {
+        boolean isFront = true;
+        List<Claw> claws = new ArrayList<>();
+        public Paw(boolean isFront, Claw... claws) {
+            name = "paw";
+            this.isFront = isFront;
+            this.claws.addAll(Arrays.asList(claws));
+        }
+        @Override
+        public String getName() {
+            return isFront ? "Front paw" : "Back paw";
+        }
+
+        @Override
+        public String toString() {
+            return "Paw{name='" + name + "'}";
+        }
+    }
+
+    private static class Cat {
+        List<AnimalPart> parts = new LinkedList<>();
+        public Cat(Tail tail, Paw... paws) {
+            super();
+            parts.add(tail);
+            parts.addAll(Arrays.asList(paws));
+        }
+
+        @Override
+        public String toString() {
+            return "Cat{" + "parts=" + parts + '}';
+        }
+    }
+
+
     public static void main(String[] args) {
         Person person = new Person(
                 "John Doe",
@@ -197,5 +265,49 @@ public class App {
             e.printStackTrace();
         }
         System.out.println("Parsed Object: " + parsedCar);
+
+        ////////////////////////////
+
+        System.out.println("___________________________________________________________");
+
+        Cat cat  = new Cat(new Tail(),
+                new Paw(true, new Claw(), new Claw(), new Claw(), new Claw()),
+                new Paw(true, new Claw(), new Claw(), new Claw(), new Claw()),
+                new Paw(false, new Claw(), new Claw(), new Claw(), new Claw()),
+                new Paw(false, new Claw(), new Claw(), new Claw(), new Claw())
+        );
+
+        // Конвертируем в JSON
+        json = null;
+        try {
+            json = JsonWriter.fromObjectToJsonString(cat);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        System.out.println("JSON: " + json);
+
+        // Обратно из JSON в объект
+        Cat parsedCat = null;
+        try {
+            parsedCat = JsonReader.fromJsonNewObject(json, Cat.class);
+        } catch (WrongJsonStringFormatException | InstantiationException | IllegalAccessException |
+                 NoSuchFieldException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Parsed Object: " + parsedCat);
+
+        Cat anotherCat = new Cat(new Tail(),
+                new Paw(true, new Claw(), new Claw(), new Claw(), new Claw()),
+                new Paw(true, new Claw(), new Claw(), new Claw(), new Claw()),
+                new Paw(false, new Claw(), new Claw(), new Claw(), new Claw()),
+                new Paw(false, new Claw(), new Claw(), new Claw(), new Claw())
+        );
+        try {
+            JsonReader.fromJsonToObject(json, anotherCat);
+        } catch (WrongJsonStringFormatException | NoSuchMethodException | NoSuchFieldException |
+                 IllegalAccessException | InvocationTargetException | InstantiationException e) {
+            throw new RuntimeException(e);
+        }
+        System.out.println("Parsed Object: " + anotherCat);
     }
 }
