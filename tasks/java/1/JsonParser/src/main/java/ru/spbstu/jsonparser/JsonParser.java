@@ -7,6 +7,11 @@ import java.util.stream.Collectors;
 
 public class JsonParser {
 
+    @FunctionalInterface
+    public interface JsonDeserializer<T> {
+        T deserialize(Map<String, Object> mappedJson);
+    }
+
     public static Map<String, Object> fromJsonToMap(String json) {
         return parseJson(json);
     }
@@ -132,8 +137,16 @@ public class JsonParser {
     }
 
 
-    private static <T> T convertMapToObject(Map<String, Object> map, Class<T> targetClass) {
+    static <T> T convertMapToObject(Map<String, Object> map, Class<T> targetClass) {
         try {
+            // Проверка аннотации
+            if (targetClass.isAnnotationPresent(JsonDeserialize.class)) {
+                JsonDeserialize annotation = targetClass.getAnnotation(JsonDeserialize.class);
+                JsonDeserializer<T> deserializer = (JsonDeserializer<T>)
+                        annotation.using().getDeclaredConstructor().newInstance();
+                return deserializer.deserialize(map);
+            }
+
             T instance = targetClass.getDeclaredConstructor().newInstance();
             Class<?> currentClass = targetClass;
 
