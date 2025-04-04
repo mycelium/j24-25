@@ -10,6 +10,12 @@ The JSON Parser Library is a Java library for parsing JSON data into Java object
 - Handles various Java data types such as primitives, collections, and custom objects.
 - Provides exception handling for incorrect JSON formats.
 
+## Unsafe Mechanism
+
+In the `JsonReader` class, there is a method `fromJsonNewObject` which creates a new instance of the target class. If no default constructor is present, this method uses `sun.misc.Unsafe` to allocate memory and instantiate the object without invoking any constructors.
+
+**Important Note**: While the use of `Unsafe` allows bypassing constructor calls, it is generally considered a low-level and non-idiomatic approach. It can lead to unexpected behavior if the class requires initialization logic within its constructor.
+
 ## Usage
 
 ### JsonInteractor Interface
