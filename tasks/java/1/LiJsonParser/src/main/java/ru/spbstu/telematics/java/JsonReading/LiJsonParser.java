@@ -1,7 +1,8 @@
 package ru.spbstu.telematics.java.JsonReading;
 import ru.spbstu.telematics.java.Common.LiJsonException;
-
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,12 +11,17 @@ import java.util.Map;
 //Класс LiJsonParser для разбора json-строки и преобразования ее в объекты
 public class LiJsonParser {
     private final JsonSplitToToken tokenSplitter; //экземпляр для получения токенов из строки
+    private final Map<Class<?>, LiJsonCustomDeserializer<?>> customDeserializers;
 
     public LiJsonParser(String jsonString) {
         this.tokenSplitter = new JsonSplitToToken(jsonString);
+        this.customDeserializers = new HashMap<>();
     }
 
-    //Возможно этот метод вообще стоит убрать и сделать три public метода
+    public <T> void registerCustomDeserializer(Class<T> clazz, LiJsonCustomDeserializer<T> deserializer){
+        customDeserializers.put(clazz,deserializer);
+    }
+
     //метод для начальной проверки json-строки на формат: json-объект, json-массив и вызова соответствующего метода для парсинга
     public Object parseCommon() throws LiJsonException {
         String token = tokenSplitter.getNextToken();
@@ -77,12 +83,20 @@ public class LiJsonParser {
 
     private <T> T parseMapToClass(Map<String, Object> map, Class<T> clazz) throws LiJsonException {
         try {
+            if (customDeserializers.containsKey(clazz)){
+                LiJsonCustomDeserializer<T> deserializer = (LiJsonCustomDeserializer<T>) customDeserializers.get(clazz);
+                return deserializer.deserialize(map);
+            }
+
             T instance = clazz.getDeclaredConstructor().newInstance();
             //итерируемся по всем записям в map
             for (Map.Entry<String, Object> entry : map.entrySet()) {
                 //получаем поля класса с именем, соответствующим ключу
                 Field field = getAllFields(clazz,entry.getKey());
                 field.setAccessible(true);
+
+                Object value = parseValueForField(entry.getValue(),field);
+
                 //устанавливаем в поле экземпляра класса значение из map для соотв-го ключа
                 field.set(instance, entry.getValue());
             }
@@ -137,5 +151,31 @@ public class LiJsonParser {
             }
         }
         throw new NoSuchFieldException(fieldName);
+    }
+
+    private Object parseValueForField(Object value, Field field) throws LiJsonException {
+        if (value instanceof Map) {
+            return parseMapToClass((Map<String, Object>) value, field.getType());
+        } else if (value instanceof List) {
+            return parseListForField((List<?>) value, field);
+        }
+        return value;
+    }
+
+    private Object parseListForField(List<?> list, Field field) throws LiJsonException {
+        Type genericType = field.getGenericType();
+        if (genericType instanceof ParameterizedType) {
+            Class<?> elementType = (Class<?>) ((ParameterizedType) genericType).getActualTypeArguments()[0];
+            List<Object> result = new ArrayList<>();
+            for (Object item : list) {
+                if (item instanceof Map) {
+                    result.add(parseMapToClass((Map<String, Object>) item, elementType));
+                } else {
+                    result.add(item);
+                }
+            }
+            return result;
+        }
+        return new ArrayList<>(list);
     }
 }

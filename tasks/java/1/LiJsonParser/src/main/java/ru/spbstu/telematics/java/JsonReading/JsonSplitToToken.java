@@ -40,12 +40,12 @@ public class JsonSplitToToken {
             default:
                 if (currentChar == '-') {
                     //проверяем, что следующий символ число (т.е. это знак минус)
-                    if (position < jsonString.length() && Character.isDigit(jsonString.charAt(position))) {
+                    if (position < jsonString.length() && (Character.isDigit(jsonString.charAt(position)) || jsonString.charAt(position) == '.')) {
                         return parseNumber(currentChar);
                     } else {
                         throw new IllegalArgumentException("Некорректный символ: " + currentChar);
                     }
-                } else if (Character.isDigit(currentChar)) {
+                } else if (Character.isDigit(currentChar) || currentChar == '.') {
                     return parseNumber(currentChar);
                 } else if (currentChar == 't' || currentChar == 'f' || currentChar == 'n') {
                     return parseLiteral(currentChar);
@@ -80,9 +80,21 @@ public class JsonSplitToToken {
         StringBuilder sb = new StringBuilder();
         sb.append(firstChar);
         char currentChar;
-        while (position < jsonString.length() && (Character.isDigit(currentChar = jsonString.charAt(position)))) {
-            sb.append(currentChar);
-            position++;
+        boolean hasDecimalPoint = firstChar == '.';
+
+        while (position < jsonString.length()) {
+            currentChar = jsonString.charAt(position);
+            if (Character.isDigit(currentChar)){
+                sb.append(currentChar);
+                position++;
+            }else if(currentChar == '.' && !hasDecimalPoint){
+                sb.append(currentChar);
+                position++;
+                hasDecimalPoint = true;
+            }else{
+                break;
+            }
+
         }
         return sb.toString();
     }

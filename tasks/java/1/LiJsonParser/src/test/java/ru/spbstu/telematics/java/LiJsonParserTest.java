@@ -3,8 +3,16 @@ import org.junit.Test;
 import ru.spbstu.telematics.java.Common.LiJsonException;
 import ru.spbstu.telematics.java.Common.LiJsonUser;
 import ru.spbstu.telematics.java.JsonReading.LiJsonParser;
-import java.util.List;
-import java.util.Map;
+import ru.spbstu.telematics.java.JsonWriting.LiJsonSerializer;
+import ru.spbstu.telematics.java.deserializers.CatDeserializer;
+import ru.spbstu.telematics.java.deserializers.ClawDeserializer;
+import ru.spbstu.telematics.java.deserializers.PawDeserializer;
+import ru.spbstu.telematics.java.deserializers.TailDeserializer;
+import ru.spbstu.telematics.java.testModelClasses.*;
+
+import java.lang.reflect.Field;
+import java.util.*;
+
 import static org.junit.Assert.*;
 
 public class LiJsonParserTest {
@@ -54,7 +62,7 @@ public class LiJsonParserTest {
     //проверка на парсинг json-объекта с вложенным json-объектом и массивом в качестве ключа в map
     @Test
     public void testParseComplexJsStructure() throws LiJsonException {
-        String json = "{\"numbers\": [1, 2, 3], \"info\": {\"active\": true, \"details\": null}}";
+        String json = "{\"numbers\": [1.2, 2, 3], \"info\": {\"active\": true, \"details\": null}}";
         LiJsonParser parser = new LiJsonParser(json);
         Object result = parser.parseCommon();
 
@@ -62,7 +70,7 @@ public class LiJsonParserTest {
         Map<?, ?> map = (Map<?, ?>) result;
         List<?> numbers = (List<?>) map.get("numbers");
         Map<?, ?> info = (Map<?, ?>) map.get("info");
-        assertEquals(1L, numbers.get(0));
+        assertEquals(1.2, numbers.get(0));
         assertEquals(true, info.get("active"));
         assertNull(info.get("details"));
     }
@@ -106,5 +114,41 @@ public class LiJsonParserTest {
         assertEquals(1, result.getParentNumber());
         assertEquals("childValue", result.getChildField());
         assertTrue(result.isChildFlag());
+    }
+
+    @Test
+    public void testParseCustomCatClass() throws Exception {
+        Cat originalCat = new Cat(new Tail(),
+                new Paw(true, new Claw(), new Claw(), new Claw(), new Claw()),
+                new Paw(true, new Claw(), new Claw(), new Claw(), new Claw()),
+                new Paw(false, new Claw(), new Claw(), new Claw(), new Claw()),
+                new Paw(false, new Claw(), new Claw(), new Claw(), new Claw())
+        );
+
+        LiJsonSerializer serializer = new LiJsonSerializer();
+        String json1 = serializer.serializeToJson(originalCat);
+
+        LiJsonParser parser = new LiJsonParser(json1);
+        parser.registerCustomDeserializer(Tail.class, new TailDeserializer());
+        parser.registerCustomDeserializer(Paw.class, new PawDeserializer());
+        parser.registerCustomDeserializer(Claw.class, new ClawDeserializer());
+        parser.registerCustomDeserializer(Cat.class, new CatDeserializer());
+
+        Cat parsedCat = parser.parseJsObjectToClass(Cat.class);
+        String json2 = serializer.serializeToJson(parsedCat);
+
+        assertEquals(json1,json2);
+        System.out.println(json1);
+        System.out.println(json2);
+
+        Field partsField = Cat.class.getDeclaredField("parts");
+        partsField.setAccessible(true);
+        List<AnimalPart> parts = (List<AnimalPart>) partsField.get(parsedCat);
+
+        assertTrue(parts.get(0) instanceof Tail);
+        assertTrue(parts.get(1) instanceof Paw);
+        assertTrue(parts.get(2) instanceof Paw);
+        assertTrue(parts.get(3) instanceof Paw);
+        assertTrue(parts.get(4) instanceof Paw);
     }
 }
