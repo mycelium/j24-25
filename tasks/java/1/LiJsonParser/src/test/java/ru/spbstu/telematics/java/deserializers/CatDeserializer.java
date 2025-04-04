@@ -18,16 +18,13 @@ public class CatDeserializer implements LiJsonCustomDeserializer<Cat> {
         try {
             List<Map<String, Object>> partsData = (List<Map<String, Object>>) jsonMap.get("parts");
 
-            // Первый элемент - хвост
             Tail tail = (Tail) animalPartDeserializer.deserialize(partsData.get(0));
 
-            // Остальные элементы - лапы
             Paw[] paws = new Paw[partsData.size() - 1];
             for (int i = 1; i < partsData.size(); i++) {
                 paws[i-1] = (Paw) animalPartDeserializer.deserialize(partsData.get(i));
             }
 
-            // Создаем Cat через reflection
             return createCatWithReflection(tail, paws);
         } catch (Exception e) {
             throw new LiJsonException("Ошибка десериализации Cat");

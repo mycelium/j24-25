@@ -17,7 +17,7 @@ public class PawDeserializer implements LiJsonCustomDeserializer<Paw> {
 
             Claw[] claws = new Claw[clawsData.size()];
             for (int i = 0; i < clawsData.size(); i++) {
-                claws[i] = new ClawDeserializer().deserialize(clawsData.get(i));
+                claws[i] = new Claw();
             }
 
             return createPawWithReflection(isFront, claws);

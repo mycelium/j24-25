@@ -5,9 +5,7 @@ import ru.spbstu.telematics.java.Common.LiJsonUser;
 import ru.spbstu.telematics.java.JsonReading.LiJsonParser;
 import ru.spbstu.telematics.java.JsonWriting.LiJsonSerializer;
 import ru.spbstu.telematics.java.deserializers.CatDeserializer;
-import ru.spbstu.telematics.java.deserializers.ClawDeserializer;
 import ru.spbstu.telematics.java.deserializers.PawDeserializer;
-import ru.spbstu.telematics.java.deserializers.TailDeserializer;
 import ru.spbstu.telematics.java.testModelClasses.*;
 
 import java.lang.reflect.Field;
@@ -129,9 +127,8 @@ public class LiJsonParserTest {
         String json1 = serializer.serializeToJson(originalCat);
 
         LiJsonParser parser = new LiJsonParser(json1);
-        parser.registerCustomDeserializer(Tail.class, new TailDeserializer());
+
         parser.registerCustomDeserializer(Paw.class, new PawDeserializer());
-        parser.registerCustomDeserializer(Claw.class, new ClawDeserializer());
         parser.registerCustomDeserializer(Cat.class, new CatDeserializer());
 
         Cat parsedCat = parser.parseJsObjectToClass(Cat.class);

@@ -46,6 +46,47 @@ LiJsonUser user = parser.parseJsObjectToClass(LiJsonUser.class);
 \\result: {name: "Din", surname: "Don", age: 27, isOnline: true, favMovies: ["The Shawshank Redemption", "Fight Club"]}
 ```
 
+Для работы с полиморфными структурами и объектами со сложной иерархией реализована возможность добавления кастомных десериализаторов:
+
+1. Создайте класс, реализующий интерфейс LiJsonCustomDeserializer\<T>:
+```java
+public class CatDeserializer implements LiJsonCustomDeserializer<Cat> {
+    private final AnimalPartDeserializer animalPartDeserializer = new AnimalPartDeserializer();
+
+    @Override
+    public Cat deserialize(Map<String, Object> jsonMap) throws LiJsonException {
+        try {
+            List<Map<String, Object>> partsData = (List<Map<String, Object>>) jsonMap.get("parts");
+            
+            Tail tail = (Tail) animalPartDeserializer.deserialize(partsData.get(0));
+            
+            Paw[] paws = new Paw[partsData.size() - 1];
+            for (int i = 1; i < partsData.size(); i++) {
+                paws[i-1] = (Paw) animalPartDeserializer.deserialize(partsData.get(i));
+            }
+            
+            return createCatWithReflection(tail, paws);
+        } catch (Exception e) {
+            throw new LiJsonException("Ошибка десериализации Cat");
+        }
+    }
+
+    private Cat createCatWithReflection(Tail tail, Paw... paws) throws Exception {
+        Constructor<Cat> constructor = Cat.class.getDeclaredConstructor(Tail.class, Paw[].class);
+        constructor.setAccessible(true);
+        return constructor.newInstance(tail, paws);
+    }
+}
+```
+
+2. Зарегистрируйте десериализатор в парсере:
+```java
+LiJsonParser parser = new LiJsonParser(json);
+parser.registerCustomDeserializer(Cat.class, new CatDeserializer());
+Cat cat = parser.parseJsObjectToClass(Cat.class);
+```
+
+
 ### Сериализация JSON
 
 Для сериализации Java-объекта в json-строку используйте метод `serializeToJson` класса `LiJsonSerializer`:
