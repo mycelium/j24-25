@@ -65,7 +65,7 @@ For complex polymorphic classes, use a custom deserializer:
 
 2. Create a static deserializer class with `deserialize` method
 
-Example with plants (polymorphic version):
+Example polymorphic version:
 
 ```java
 @JsonDeserialize(using = Cat.CatDeserializer.class)
