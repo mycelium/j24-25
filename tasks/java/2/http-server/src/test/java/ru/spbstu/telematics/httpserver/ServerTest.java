@@ -123,4 +123,37 @@ class ServerTest {
             assertEquals(expected, reader.readLine());
         }
     }
+
+    // Тест для PUT запроса
+    @Test
+    public void testPutRequest() throws Exception {
+        server.addHandler("PUT", "/put", request -> {
+            HttpResponse res = new HttpResponse();
+            res.setStatus(200);
+            res.setBody("PUT received: " + request.getBody());
+            res.setHeader("Content-Type", "text/plain");
+            return res;
+        });
+        startServer();
+
+        URL url = new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/put");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("PUT");
+        conn.setDoOutput(true);
+
+        String putBody = "putData";
+        conn.setRequestProperty("Content-Type", "text/plain");
+        conn.setRequestProperty("Content-Length", String.valueOf(putBody.getBytes(StandardCharsets.UTF_8).length));
+
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(putBody.getBytes(StandardCharsets.UTF_8));
+        }
+
+        assertEquals(200, conn.getResponseCode());
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+            String expected = "PUT received: " + putBody;
+            assertEquals(expected, reader.readLine());
+        }
+    }
 }
