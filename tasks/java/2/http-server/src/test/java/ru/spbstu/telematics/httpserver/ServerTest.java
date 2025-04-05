@@ -90,4 +90,37 @@ class ServerTest {
         }
     }
 
+    // Тест для POST запроса
+    @Test
+    public void testPostRequest() throws Exception {
+        server.addHandler("POST", "/post", request -> {
+            HttpResponse res = new HttpResponse();
+            res.setStatus(200);
+            // Возвращаем тело запроса в ответ
+            res.setBody("POST received: " + request.getBody());
+            res.setHeader("Content-Type", "text/plain");
+            return res;
+        });
+        startServer();
+
+        URL url = new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/post");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+
+        String postBody = "data123";
+        conn.setRequestProperty("Content-Type", "text/plain");
+        conn.setRequestProperty("Content-Length", String.valueOf(postBody.getBytes(StandardCharsets.UTF_8).length));
+
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(postBody.getBytes(StandardCharsets.UTF_8));
+        }
+
+        assertEquals(200, conn.getResponseCode());
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+            String expected = "POST received: " + postBody;
+            assertEquals(expected, reader.readLine());
+        }
+    }
 }
