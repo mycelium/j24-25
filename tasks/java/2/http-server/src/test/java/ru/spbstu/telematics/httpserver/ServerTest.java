@@ -9,6 +9,7 @@ import java.net.HttpURLConnection;
 import java.net.Socket;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -179,4 +180,44 @@ class ServerTest {
             assertEquals("DELETE received", reader.readLine());
         }
     }
+
+    @Test
+    public void testBinaryResponse() throws Exception {
+        // Создаем временный бинарный файл
+        File binaryFile = File.createTempFile("test", ".bin");
+        try (FileOutputStream fos = new FileOutputStream(binaryFile)) {
+            byte[] testData = new byte[256];
+            for (int i = 0; i < 256; i++) {
+                testData[i] = (byte) i;
+            }
+            fos.write(testData);
+        }
+
+        // Добавляем обработчик для GET запроса по пути /binary
+        server.addHandler("GET", "/binary", request -> {
+            HttpResponse res = new HttpResponse();
+            res.setBody(binaryFile, "application/octet-stream");
+            res.setStatus(200);
+            return res;
+        });
+
+        startServer();
+
+        try {
+            URL url = new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/binary");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+            assertEquals(200, conn.getResponseCode());
+            assertEquals("application/octet-stream", conn.getContentType());
+            assertEquals(String.valueOf(binaryFile.length()), conn.getHeaderField("Content-Length"));
+
+            try (InputStream is = conn.getInputStream()) {
+                byte[] responseData = is.readAllBytes();
+                assertArrayEquals(Files.readAllBytes(binaryFile.toPath()), responseData);
+            }
+        } finally {
+            binaryFile.delete();
+        }
+    }
+
 }
