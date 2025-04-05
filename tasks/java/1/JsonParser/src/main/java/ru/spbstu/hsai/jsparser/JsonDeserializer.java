@@ -1,5 +1,5 @@
 package ru.spbstu.hsai.jsparser;
-import sun.reflect.ReflectionFactory;
+import ru.spbstu.hsai.jsparser.custom.JsonDeserialize;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.List;
@@ -109,11 +109,14 @@ public class JsonDeserializer {
 
     public static <T> T TokensToClass(Class<T> convertClass, Map<String, Object> jsonTokens) {
         try {
-            ReflectionFactory rf = ReflectionFactory.getReflectionFactory();
-            Constructor<?> objDef = Object.class.getDeclaredConstructor();
-            Constructor<T> intConstr = (Constructor<T>) rf.newConstructorForSerialization(convertClass, objDef);
-            T instance = intConstr.newInstance();
+            if (convertClass.isAnnotationPresent(JsonDeserialize.class)) {
+                JsonDeserialize annotation = convertClass.getAnnotation(JsonDeserialize.class);
+                Class<?> deserializerClass = annotation.using();
+                Method method = deserializerClass.getDeclaredMethod("deserialize", Map.class);
+                return (T) method.invoke(null, jsonTokens);
+            }
 
+            T instance = convertClass.getDeclaredConstructor().newInstance();
             List<Field> allFields = getAllFields(convertClass);
             for (Field field : allFields) {
                 field.setAccessible(true);
@@ -223,12 +226,7 @@ public class JsonDeserializer {
         Class<?> elementClass = (Class<?>) elementType;
 
         for (Object item : value) {
-            if (item instanceof Map) {
-                // Если элемент — Map (например, {"type": "tail", ...}), рекурсивно вызываем TokensToClass
-                resultCollection.add(TokensToClass(elementClass, (Map<String, Object>) item));
-            } else {
-                resultCollection.add(convertValue(item, elementClass));
-            }
+            resultCollection.add(convertValue(item, elementClass));
         }
 
         return resultCollection;
