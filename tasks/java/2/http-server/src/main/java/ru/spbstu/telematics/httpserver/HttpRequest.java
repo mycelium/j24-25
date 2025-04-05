@@ -57,4 +57,25 @@ public class HttpRequest {
     public String getBody() {
         return body;
     }
+
+    public String getHeader(String name) {
+        return headers.getOrDefault(name, "");
+    }
+
+    public Map<String, String> getAllHeaders() {
+        return headers;
+    }
+
+    public int getContentLength() {
+        try {
+            return Integer.parseInt(headers.getOrDefault("Content-Length", "0"));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    public String getContentType() {
+        return headers.getOrDefault("Content-Type", "text/plain");
+    }
+
 }

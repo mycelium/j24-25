@@ -32,22 +32,28 @@ public class Server {
         handlers.put(new RequestKey(method, path), handler);
     }
 
-    public void start() {
+    public void start() throws IOException {
         try {
             serverChannel = ServerSocketChannel.open();
             serverChannel.bind(new InetSocketAddress(host, port));
             System.out.println("Сервер запущен на " + host + ":" + port);
 
-            while (true) {
+            while (!Thread.currentThread().isInterrupted()) {
                 SocketChannel clientSocket = serverChannel.accept();
-                executor.submit(() -> handleConnection(clientSocket));
+                if (clientSocket != null) {
+                    executor.submit(() -> handleConnection(clientSocket));
+                }
             }
         } catch (IOException e) {
-            System.err.println("Ошибка при запуске сервера: " + e.getMessage());
-        } finally {
-            stop();
+            // Чтобы не было исключения при остановке сервера
+            if (serverChannel == null || !serverChannel.isOpen()) {
+                System.out.println("Сервер завершил работу.");
+            } else {
+                throw new IOException("Ошибка при запуске сервера: " + e.getMessage());
+            }
         }
     }
+
 
     private void handleConnection(SocketChannel clientSocket) {
         try {
@@ -88,7 +94,7 @@ public class Server {
 
     public void stop() {
         try {
-            if (serverChannel != null) {
+            if (serverChannel != null && serverChannel.isOpen()) {
                 serverChannel.close();
             }
             executor.shutdown();
