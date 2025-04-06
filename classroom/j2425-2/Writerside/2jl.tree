@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE instance-profile
+        SYSTEM "https://resources.jetbrains.com/writerside/1.0/product-profile.dtd">
+
+<instance-profile id="2jl"
+                 name="2024-2025 java lessons"
+                 start-page="starter-topic.md">
+
+    <toc-element topic="Requirements.md"/>
+    <toc-element topic="starter-topic.md"/>
+</instance-profile>

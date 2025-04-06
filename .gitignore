@@ -11,3 +11,8 @@ tasks/scala/2/target/
 tasks/scala/2/project/target/
 tasks/scala/2/project/build.properties
 .idea/
+input/
+.idea
+build/
+images/
+users.db
