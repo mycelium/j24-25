@@ -3,6 +3,10 @@ package ru.spbstu.telematics.httpserver;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ru.spbstu.telematics.httpserver.exceptions.JsonParsingException;
+import ru.spbstu.telematics.httpserver.exceptions.SameRouteException;
+import ru.spbstu.telematics.httpserver.exceptions.ServerShutdownException;
+import ru.spbstu.telematics.httpserver.exceptions.ServerStartupException;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -46,7 +50,7 @@ class ServerTest {
         serverThread = new Thread(() -> {
             try {
                 server.start();
-            } catch (IOException e) {
+            } catch (IOException | ServerStartupException e) {
                 fail("Сервер не удалось запустить: " + e.getMessage());
             }
         });
@@ -55,7 +59,7 @@ class ServerTest {
     }
 
     @AfterEach
-    public void tearDown() {
+    public void tearDown() throws ServerShutdownException {
         if (server != null) {
             server.stop();
         }
@@ -305,7 +309,12 @@ class ServerTest {
     public void testJsonRequestHandling() throws Exception {
         server.addHandler("POST", "/json", request -> {
             HttpResponse res = new HttpResponse();
-            Map<String, Object> jsonData = request.parseJson();
+            Map<String, Object> jsonData = null;
+            try {
+                jsonData = request.parseJson();
+            } catch (JsonParsingException e) {
+                e.printStackTrace();
+            }
             if (!jsonData.isEmpty()) {
                 res.setStatus(200);
                 res.setBody("Received JSON with " + jsonData.size() + " fields");
@@ -338,5 +347,45 @@ class ServerTest {
             System.out.println(response);
         }
         System.out.println("status: " + conn.getResponseMessage());
+    }
+
+    // Тест на дублирование маршрутов
+    @Test
+    public void testSameHandlers() throws InterruptedException {
+        HttpHandler handler1 = request -> {
+            HttpResponse res = new HttpResponse();
+            res.setBody("Handler 1");
+            return res;
+        };
+        HttpHandler handler2 = request -> {
+            HttpResponse res = new HttpResponse();
+            res.setBody("Handler 2");
+            return res;
+        };
+
+        // Регистрируем первый обработчик
+        try {
+            server.addHandler("GET", "/same", handler1);
+        } catch (SameRouteException e) {
+            e.printStackTrace();
+        }
+
+        // Попытка зарегистрировать второй обработчик для того же маршрута должна выбросить исключение
+        SameRouteException exception = assertThrows(SameRouteException.class,
+                () -> server.addHandler("GET", "/same", handler2));
+        assertEquals("Маршрут уже существует: GET /same", exception.getMessage());
+
+        startServer();
+
+        try {
+            URL url = new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/same");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                assertEquals("Handler 1", reader.readLine());
+            }
+        } catch (Exception e) {
+            fail("Test failed: " + e.getMessage());
+        }
     }
 }
