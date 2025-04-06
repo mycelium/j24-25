@@ -59,6 +59,60 @@ System.out.println(json); // Вывод: {"name":"John","age":30}
 
 ---
 
+### 5. Кастомные десериализаторы для SimpleJson
+Стандартная десериализация может не подойти, если:
+1. JSON имеет нестандартную структуру.
+2. Требуется дополнительная валидация данных.
+3. Нужно преобразовать JSON в сложные объекты с вложенными полями.
+4. Имена полей в JSON не совпадают с именами полей класса.
+
+Пример:
+```java
+private static class Paw extends AnimalPart {
+        boolean isFront = true;
+        List<Claw> claws = new ArrayList<>();
+        public Paw(boolean isFront, Claw... claws) {
+            name = "paw";
+            this.isFront = isFront;
+            this.claws.addAll(Arrays.asList(claws));
+        }
+        @Override
+        public String getName() {
+            return isFront ? "Front paw" : "Back paw";
+        }
+    }
+```
+
+#### Использование
+##### 1. Создайте десериализатор
+Реализуйте интерфейс `JsonDeserializer<T>`:
+```java
+public class MyDeserializer implements JsonDeserializer<MyClass> {
+    @Override
+    public MyClass deserialize(Map<String, Object> data, JSONParser parser) {
+        // Логика преобразования data в MyClass
+    }
+}
+```
+##### 2. Укажите десериализатор через аннотацию `@JsonDeserialize`
+```java
+@JsonDeserialize(using = MyClass.MyDeserializer.class)
+public class MyClass {
+    // Поля и методы класса
+
+    public static class MyDeserializer
+            implements JsonDeserializer<MyClass> {
+        // Реализация
+    }
+}
+```
+##### 3. Используйте парсер
+```java
+JSONParser parser = new JSONParser();
+MyClass obj = parser.parse(jsonString, MyClass.class);
+```
+---
+
 ## Поддерживаемые возможности
 - Примитивные типы и их обёртки (int, Integer, double, Double и т.п.).
 - Строки (String).
