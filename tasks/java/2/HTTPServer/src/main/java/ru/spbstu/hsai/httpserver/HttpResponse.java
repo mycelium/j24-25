@@ -3,6 +3,7 @@ package ru.spbstu.hsai.httpserver;
 import ru.spbstu.hsai.httpserver.common.HttpStatus;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,8 +31,14 @@ public class HttpResponse {
             headers.put("Content-Length", String.valueOf(body.length));
         }
         headers.forEach((k, v) -> response.append(k).append(": ").append(v).append("\r\n"));
-        response.append("\r\n").append(body);
-        return response.toString().getBytes(StandardCharsets.UTF_8);
+
+        String responseStr = response.append("\r\n").toString();
+        byte[] headerBytes = responseStr.getBytes(StandardCharsets.UTF_8);
+
+        byte[] bodyBytes = body;
+        byte[] combined = Arrays.copyOf(headerBytes, headerBytes.length + bodyBytes.length);
+        System.arraycopy(bodyBytes, 0, combined, headerBytes.length, bodyBytes.length);
+        return combined;
     }
 
 }
