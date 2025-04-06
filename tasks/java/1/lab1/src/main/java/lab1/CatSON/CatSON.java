@@ -1,6 +1,7 @@
 package lab1.CatSON;
 
 import java.lang.reflect.Array;
+import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.StringJoiner;
@@ -43,7 +44,9 @@ public class CatSON {
         if (obj.getClass().isArray()) {
             return readArrayToJson(obj);
         }
-
+        if (obj instanceof Collection) {
+            return readCollectionToJSON((Collection<?>) obj);
+        }
         return "err";
 
     }
@@ -62,7 +65,7 @@ public class CatSON {
         return "\"" +
                 obj.chars()
                         .mapToObj(c -> (char) c)
-                        .map(el -> Character.isISOControl(el) || MAP_OF_SOME_ISO_SYMBOLS.containsKey(el)?
+                        .map(el -> Character.isISOControl(el) || MAP_OF_SOME_ISO_SYMBOLS.containsKey(el) ?
                                 MAP_OF_SOME_ISO_SYMBOLS.containsKey(el) ?
                                         MAP_OF_SOME_ISO_SYMBOLS.get(el) :
                                         String.format("\\u%04x", (int) el) :
@@ -77,6 +80,13 @@ public class CatSON {
             str.add(this.toJson(Array.get(obj, i)));
         }
         return str.toString();
+    }
+
+    private String readCollectionToJSON(Collection<?> obj) {
+        return "[" + obj.stream()
+                .map(this::toJson)
+                .collect(Collectors.joining(","))
+                + "]";
     }
 
 }
