@@ -2,8 +2,11 @@ package ru.spbstu.hsai.httpserver;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.net.URLDecoder;
 
 public class HttpRequest {
     private final String method;
@@ -11,13 +14,38 @@ public class HttpRequest {
     private final String protocol;
     private final Map<String, String> headers = new HashMap<>();
     private final String body;
+    private final Map<String, String> queryParams;
+    private Map<String, String> pathParams = new HashMap<>(); // <-- добавим
 
-    private HttpRequest(String method, String path, String protocol, Map<String, String> headers, String body) {
+
+    public HttpRequest(String method, String path, String protocol,
+                       Map<String, String> headers, String body) {
         this.method = method;
-        this.path = path;
         this.protocol = protocol;
         this.headers.putAll(headers);
         this.body = body;
+
+        int idx = path.indexOf('?');
+        if (idx >= 0) {
+            this.path = path.substring(0, idx);
+            this.queryParams = parseQueryParams(path.substring(idx + 1));
+        } else {
+            this.path = path;
+            this.queryParams = Collections.emptyMap();
+        }
+    }
+
+    private Map<String, String> parseQueryParams(String query) {
+        Map<String, String> map = new HashMap<>();
+        String[] pairs = query.split("&");
+        for (String pair : pairs) {
+            String[] onePart = pair.split("=");
+            if (onePart.length == 2) {
+                map.put(URLDecoder.decode(onePart[0], StandardCharsets.UTF_8),
+                        URLDecoder.decode(onePart[1], StandardCharsets.UTF_8));
+            }
+        }
+        return map;
     }
 
     public static HttpRequest parse(BufferedReader request) throws IOException {
@@ -63,4 +91,16 @@ public class HttpRequest {
     public String getProtocol() { return protocol; }
     public Map<String, String> getHeaders() { return headers; }
     public String getBody() { return body; }
+
+    public String getQueryParam(String name) {
+        return queryParams.get(name);
+    }
+
+    public String getPathParam(String name) {
+        return pathParams.get(name);
+    }
+
+    public void setPathParams(Map<String, String> pathParams) {
+        this.pathParams = pathParams;
+    }
 }
