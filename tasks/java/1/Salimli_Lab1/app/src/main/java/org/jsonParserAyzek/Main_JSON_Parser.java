@@ -3,6 +3,8 @@
  */
 
 package org.jsonParserAyzek;
+import sun.misc.Unsafe;
+
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.*;
@@ -36,6 +38,19 @@ class MinUI {
 }
 
 public class Main_JSON_Parser {
+
+    private static final Unsafe UNSAFE;
+
+    static {
+        try {
+            Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            UNSAFE = (Unsafe) f.get(null);
+        } catch (Exception e) {
+            throw new RuntimeException("Unsafe", e);
+        }
+    }
+
     private static List<Field> fieldList(Class<?> maybeClass){
         List<Field> fields = new ArrayList<>();
         while(maybeClass != null){
@@ -273,7 +288,12 @@ public class Main_JSON_Parser {
     public static <T> T JSONToObj(String json, Class<T> tempObj) throws Exception {
         Map<String, Object> map = JSONIntoMAP(json);
         Class<?> justClass = tempObj;
-        Object obj = justClass.getDeclaredConstructor().newInstance();
+        Object obj;
+        try {
+            obj = justClass.getDeclaredConstructor().newInstance();
+        } catch (NoSuchMethodException e) {
+            obj = UNSAFE.allocateInstance(justClass);
+        }
         List<Field> fields = fieldList(justClass);
         for (Field field : fields) {
             field.setAccessible(true);
@@ -363,9 +383,6 @@ public class Main_JSON_Parser {
             this.isFront = isFront;
             this.claws.addAll(Arrays.asList(claws));
         }
-        public Paw() {
-            name = "paw";
-        }
 
         @Override
         public String getName() {
@@ -378,8 +395,6 @@ public class Main_JSON_Parser {
         public Cat(Tail tail, Paw... paws) {
             parts.add(tail);
             parts.addAll(Arrays.asList(paws));
-        }
-        public Cat() {
         }
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -397,11 +412,22 @@ public class Main_JSON_Parser {
             public String model;
             public int v;
             public boolean crashed_Painted;
+            public FutureCar(String mark, String model, int v, boolean crashed) {
+                this.mark = mark;
+                this.model = model;
+                this.v = v;
+                this.crashed_Painted = crashed;
+            }
         }
+
+        ui.start("Парсинг машинки");
         FutureCar futureCar = JSONToObj(json, FutureCar.class);
-        ui.start("Парсинг объекта");
-        System.out.println(": \tРезультат: " + futureCar.mark + ", " + futureCar.model + ", v" + futureCar.v + ", " + futureCar.crashed_Painted);
-        ui.end("Парсинг объекта");
+        System.out.println(": \tРезультат: "
+                + futureCar.mark + ", "
+                + futureCar.model + ", v"
+                + futureCar.v + ", "
+                + futureCar.crashed_Painted);
+        ui.end("Парсинг машинки");
 
         ui.start("JSON");
         String generatedJson = toJSON(futureCar);
@@ -431,6 +457,7 @@ public class Main_JSON_Parser {
         String catJson = toJSON(cat);
         System.out.println(": \tCat JSON: " + catJson);
         ui.end("Сериализация кошки )");
+
         ui.start("Десериализация кошки (");
         Cat catParsed = JSONToObj(catJson, Cat.class);
         System.out.println(": \tCat parts:");
