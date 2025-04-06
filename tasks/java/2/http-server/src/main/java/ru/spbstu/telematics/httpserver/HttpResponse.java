@@ -1,7 +1,6 @@
 package ru.spbstu.telematics.httpserver;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
@@ -96,11 +95,18 @@ public class HttpResponse {
      * and the "Content-Type" and "Content-Length" headers are set accordingly.
      *
      * @param file The file to be used as the body of the response.
-     * @param contentType The content type of the file (e.g., "text/html", "application/json").
+     * @param contentType The content type of the file.
      */
     public void setBody(File file, String contentType) {
-        try {
-            this.bodyBytes = Files.readAllBytes(file.toPath());
+        try (InputStream inputStream = new FileInputStream(file)) {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192]; // 8 KB buffer
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                byteArrayOutputStream.write(buffer, 0, bytesRead);
+            }
+
+            this.bodyBytes = byteArrayOutputStream.toByteArray();
             setHeader("Content-Type", contentType);
             setHeader("Content-Length", String.valueOf(bodyBytes.length));
         } catch (IOException e) {

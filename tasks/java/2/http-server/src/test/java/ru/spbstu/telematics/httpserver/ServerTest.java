@@ -10,7 +10,6 @@ import ru.spbstu.telematics.httpserver.exceptions.ServerStartupException;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.Socket;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -74,6 +73,7 @@ class ServerTest {
 
     // Тест для GET запроса
     @Test
+    @SuppressWarnings("deprecation")
     public void testGetRequest() throws Exception {
         server.addHandler("GET", "/get", request -> {
             HttpResponse res = new HttpResponse();
@@ -283,6 +283,7 @@ class ServerTest {
         byte[] largeData = new byte[1024 * 1024]; // 1 МБ
         new Random().nextBytes(largeData);
         Files.write(largeFile.toPath(), largeData);
+        System.out.println("Content-Length: " + largeFile.length());
 
         server.addHandler("GET", "/large", request -> {
             HttpResponse res = new HttpResponse();
@@ -296,7 +297,7 @@ class ServerTest {
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         assertEquals(200, conn.getResponseCode());
         assertEquals(String.valueOf(largeFile.length()), conn.getHeaderField("Content-Length"));
-
+//        System.out.println("Response body size: " + bodyBytes.length);  // Добавьте это для отладки
         try (InputStream is = conn.getInputStream()) {
             byte[] responseData = is.readAllBytes();
             assertArrayEquals(largeData, responseData);

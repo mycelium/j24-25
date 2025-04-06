@@ -103,17 +103,24 @@ public class Server {
      */
     private void handleConnection(SocketChannel clientSocket) {
         try {
-            // Чтение запроса из канала
+            StringBuilder requestBuilder = new StringBuilder();
             ByteBuffer buffer = ByteBuffer.allocate(8192);
-            int bytesRead = clientSocket.read(buffer);
-            if (bytesRead <= 0) {
-                clientSocket.close();
-                return;
-            }
-            buffer.flip();
-            String requestData = StandardCharsets.UTF_8.decode(buffer).toString();
+            int bytesRead;
 
-            // Парсинг HTTP запроса
+            while ((bytesRead = clientSocket.read(buffer)) != -1) {
+                if (bytesRead == 0) {
+                    continue;
+                }
+                buffer.flip();
+                requestBuilder.append(StandardCharsets.UTF_8.decode(buffer));
+                buffer.clear();
+                if (requestBuilder.indexOf("\r\n\r\n") != -1) {
+                    break;
+                }
+            }
+
+            String requestData = requestBuilder.toString();
+
             HttpRequest request = HttpRequest.parse(requestData);
             RequestKey key = new RequestKey(request.getMethod(), request.getPath());
             HttpHandler handler = handlers.get(key);
@@ -127,8 +134,10 @@ public class Server {
                 response.setBody("Not Found");
             }
 
-            // Отправка ответа клиенту
-            clientSocket.write(ByteBuffer.wrap(response.toBytes()));
+            ByteBuffer responseBuffer = ByteBuffer.wrap(response.toBytes());
+            while (responseBuffer.hasRemaining()) {
+                clientSocket.write(responseBuffer);
+            }
         } catch (Exception e) {
             System.err.println("Ошибка в обработке соединения: " + e.getMessage());
         } finally {
@@ -137,6 +146,7 @@ public class Server {
             } catch (IOException ignored) {}
         }
     }
+
 
     /**
      * Stops the server and shuts down the resources, including the thread pool and server socket channel.
