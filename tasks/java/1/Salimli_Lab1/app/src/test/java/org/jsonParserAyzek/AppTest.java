@@ -34,7 +34,6 @@ class Main_JSON_ParserTest {
             public boolean crashed_Painted;
 
             public FutureCar() {
-                // пустой конструктор для десериализации
             }
 
             public FutureCar(String mark, String model, int v, boolean crashed) {
