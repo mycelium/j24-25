@@ -10,6 +10,8 @@ import java.net.Socket;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Map;
+import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -220,4 +222,121 @@ class ServerTest {
         }
     }
 
+    // Тест с разными типами контента: текстовый и бинарный файлы
+    @Test
+    public void testCombinedContentTypes() throws Exception {
+        // Создаем тестовые файлы
+        File textFile = File.createTempFile("text", ".txt");
+        Files.writeString(textFile.toPath(), "Text content");
+
+        File imageFile = File.createTempFile("image", ".png");
+        try (FileOutputStream fos = new FileOutputStream(imageFile)) {
+            byte[] imageData = new byte[100];
+            new Random().nextBytes(imageData);
+            fos.write(imageData);
+        }
+
+        // Регистрируем обработчики через addHandler
+        server.addHandler("GET", "/text-file", request -> {
+            HttpResponse res = new HttpResponse();
+            res.setBody(textFile, "text/plain");
+            res.setStatus(200);
+            return res;
+        });
+
+        server.addHandler("GET", "/image", request -> {
+            HttpResponse res = new HttpResponse();
+            res.setBody(imageFile, "image/png");
+            res.setStatus(200);
+            return res;
+        });
+        startServer();
+
+        // Тест текстового файла
+        HttpURLConnection textConn = (HttpURLConnection)
+                new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/text-file").openConnection();
+        assertEquals(200, textConn.getResponseCode());
+        assertEquals("text/plain", textConn.getContentType());
+        String textResponse = new String(textConn.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        assertEquals(Files.readString(textFile.toPath()), textResponse);
+
+        // Тест бинарного файла (изображения)
+        HttpURLConnection imageConn = (HttpURLConnection)
+                new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/image").openConnection();
+        assertEquals(200, imageConn.getResponseCode());
+        assertEquals("image/png", imageConn.getContentType());
+        byte[] imageResponse = imageConn.getInputStream().readAllBytes();
+        assertArrayEquals(Files.readAllBytes(imageFile.toPath()), imageResponse);
+
+        textFile.delete();
+        imageFile.delete();
+    }
+
+    // Тест для большого бинарного файла
+    @Test
+    public void testBigFile() throws Exception {
+        File largeFile = File.createTempFile("large", ".bin");
+        byte[] largeData = new byte[1024 * 1024]; // 1 МБ
+        new Random().nextBytes(largeData);
+        Files.write(largeFile.toPath(), largeData);
+
+        server.addHandler("GET", "/large", request -> {
+            HttpResponse res = new HttpResponse();
+            res.setBody(largeFile, "application/octet-stream");
+            res.setStatus(200);
+            return res;
+        });
+        startServer();
+
+        URL url = new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/large");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        assertEquals(200, conn.getResponseCode());
+        assertEquals(String.valueOf(largeFile.length()), conn.getHeaderField("Content-Length"));
+
+        try (InputStream is = conn.getInputStream()) {
+            byte[] responseData = is.readAllBytes();
+            assertArrayEquals(largeData, responseData);
+        }
+        largeFile.delete();
+    }
+
+    // Тест обработки JSON-запроса
+    @Test
+    public void testJsonRequestHandling() throws Exception {
+        server.addHandler("POST", "/json", request -> {
+            HttpResponse res = new HttpResponse();
+            Map<String, Object> jsonData = request.parseJson();
+            if (!jsonData.isEmpty()) {
+                res.setStatus(200);
+                res.setBody("Received JSON with " + jsonData.size() + " fields");
+                res.setHeader("Content-Type", "application/json");
+            } else {
+                res.setStatus(400);
+                res.setBody("Invalid JSON");
+            }
+            return res;
+        });
+        startServer();
+
+        URL url = new URL("http://" + TEST_HOST + ":" + TEST_PORT + "/json");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setDoOutput(true);
+
+        String jsonInput = "{\"name\":\"John Doe\", \"age\":18}";
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(jsonInput.getBytes(StandardCharsets.UTF_8));
+        }
+
+        assertEquals(200, conn.getResponseCode());
+        assertEquals("application/json", conn.getContentType());
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+            var response = reader.readLine();
+            assertEquals("Received JSON with 2 fields", response);
+            System.out.println(response);
+        }
+        System.out.println("status: " + conn.getResponseMessage());
+    }
 }
