@@ -3,6 +3,7 @@ package ru.spbstu.telematics.httpserver;
 import java.util.HashMap;
 import java.util.Map;
 
+import ru.spbstu.telematics.httpserver.exceptions.JsonParsingException;
 import ru.spbstu.telematics.json.jsoninteraction.*;
 
 public class HttpRequest {
@@ -44,7 +45,7 @@ public class HttpRequest {
         return new HttpRequest(method, path, version, headers, body);
     }
 
-    public Map<String, Object> parseJson() {
+    public Map<String, Object> parseJson() throws JsonParsingException {
         if (!getContentType().contains("application/json")) {
             return new HashMap<>();
         }
@@ -52,8 +53,7 @@ public class HttpRequest {
         try {
             return JsonReader.fromJsonToMap(body);
         } catch (Exception e) {
-            e.printStackTrace();
-            return new HashMap<>();
+            throw new JsonParsingException(e);
         }
     }
 

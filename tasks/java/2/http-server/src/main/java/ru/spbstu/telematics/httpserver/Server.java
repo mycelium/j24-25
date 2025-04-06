@@ -1,5 +1,9 @@
 package ru.spbstu.telematics.httpserver;
 
+import ru.spbstu.telematics.httpserver.exceptions.SameRouteException;
+import ru.spbstu.telematics.httpserver.exceptions.ServerShutdownException;
+import ru.spbstu.telematics.httpserver.exceptions.ServerStartupException;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -28,11 +32,15 @@ public class Server {
         this.executor = Executors.newFixedThreadPool(threads);
     }
 
-    public void addHandler(String method, String path, HttpHandler handler) {
-        handlers.put(new RequestKey(method, path), handler);
+    public void addHandler(String method, String path, HttpHandler handler) throws SameRouteException {
+        RequestKey key = new RequestKey(method, path);
+        if (handlers.containsKey(key)) {
+            throw new SameRouteException(method, path);
+        }
+        handlers.put(key, handler);
     }
 
-    public void start() throws IOException {
+    public void start() throws IOException, ServerStartupException {
         try {
             serverChannel = ServerSocketChannel.open();
             serverChannel.bind(new InetSocketAddress(host, port));
@@ -49,7 +57,7 @@ public class Server {
             if (serverChannel == null || !serverChannel.isOpen()) {
                 System.out.println("Сервер завершил работу.");
             } else {
-                throw new IOException("Ошибка при запуске сервера: " + e.getMessage());
+                throw new ServerStartupException("Ошибка при запуске сервера", e);
             }
         }
     }
@@ -92,7 +100,7 @@ public class Server {
         }
     }
 
-    public void stop() {
+    public void stop() throws ServerShutdownException {
         try {
             if (serverChannel != null && serverChannel.isOpen()) {
                 serverChannel.close();
@@ -100,7 +108,7 @@ public class Server {
             executor.shutdown();
             System.out.println("Сервер остановлен.");
         } catch (IOException e) {
-            System.err.println("Ошибка при остановке сервера: " + e.getMessage());
+            throw new ServerShutdownException("Ошибка при остановке сервера: ", e);
         }
     }
 }
