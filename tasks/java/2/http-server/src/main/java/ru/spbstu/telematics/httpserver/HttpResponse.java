@@ -23,6 +23,9 @@ public class HttpResponse {
             case 200:
                 statusMessage = "OK";
                 break;
+            case 400:
+                statusMessage = "Bad Request";
+                break;
             case 404:
                 statusMessage = "Not Found";
                 break;

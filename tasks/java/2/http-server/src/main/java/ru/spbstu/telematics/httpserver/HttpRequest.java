@@ -3,6 +3,8 @@ package ru.spbstu.telematics.httpserver;
 import java.util.HashMap;
 import java.util.Map;
 
+import ru.spbstu.telematics.json.jsoninteraction.*;
+
 public class HttpRequest {
     private final String method;
     private final String path;
@@ -40,6 +42,19 @@ public class HttpRequest {
         }
 
         return new HttpRequest(method, path, version, headers, body);
+    }
+
+    public Map<String, Object> parseJson() {
+        if (!getContentType().contains("application/json")) {
+            return new HashMap<>();
+        }
+
+        try {
+            return JsonReader.fromJsonToMap(body);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new HashMap<>();
+        }
     }
 
     public String getMethod() {
