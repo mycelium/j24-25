@@ -5,7 +5,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.StringJoiner;
-import java.util.stream.Stream;
 
 public class CatSON {
 
@@ -96,9 +95,12 @@ public class CatSON {
     private String readMapToJSON(Map<?, ?> obj) {
         return "{" + obj
                 .entrySet().stream()
+                .filter(entry -> entry.getValue() != null)
                 .map(entry -> String
                         .format("%s:%s",
-                                entry.getKey() instanceof Number ?
+                                entry.getKey() instanceof Number ||
+                                        entry.getKey() instanceof Boolean ||
+                                        entry.getKey() == null?
                                         "\"" + this.toJson(entry.getKey()) + "\"" :
                                         this.toJson(entry.getKey()), this.toJson(entry.getValue())))
                 .collect(Collectors.joining(",")) + "}";
