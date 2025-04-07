@@ -1,10 +1,10 @@
 package lab1.CatSON;
 
 import java.lang.reflect.Array;
-import java.util.Collection;
-import java.util.Map;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.*;
 import java.util.stream.Collectors;
-import java.util.StringJoiner;
 
 public class CatSON {
 
@@ -50,7 +50,7 @@ public class CatSON {
         if (obj instanceof Map) {
             return readMapToJSON((Map<?, ?>) obj);
         }
-        return "err";
+        return readObjectToJSON(obj);
 
     }
 
@@ -100,10 +100,38 @@ public class CatSON {
                         .format("%s:%s",
                                 entry.getKey() instanceof Number ||
                                         entry.getKey() instanceof Boolean ||
-                                        entry.getKey() == null?
+                                        entry.getKey() == null ?
                                         "\"" + this.toJson(entry.getKey()) + "\"" :
                                         this.toJson(entry.getKey()), this.toJson(entry.getValue())))
                 .collect(Collectors.joining(",")) + "}";
     }
 
+    private String readObjectToJSON(Object obj) {
+        Class<?> clazz = obj.getClass();
+        List<Field> listOfAllFiends = new ArrayList<>();
+
+        if (clazz.isAnonymousClass() ||
+                clazz.isMemberClass() && !Modifier.isStatic(clazz.getModifiers()) ||
+                clazz.isLocalClass()) {
+            return "null";
+        }
+
+        while (clazz != null && clazz != Object.class) {
+            listOfAllFiends.addAll(Arrays.asList(clazz.getDeclaredFields()));
+            clazz = clazz.getSuperclass();
+        }
+
+        return listOfAllFiends.stream()
+                .filter(field -> (!Modifier.isTransient(field.getModifiers())
+                        && !Modifier.isStatic(field.getModifiers())))
+                .map(field -> {
+                            try {
+                                field.setAccessible(true);
+                                return toJson(field.getName()) + ":" + toJson(field.get(obj));
+                            } catch (IllegalAccessException e) {
+                                throw new RuntimeException("Field " + field.getName() + " can`t be read tp JSON");
+                            }
+                        }
+                ).collect(Collectors.joining(",", "{", "}"));
+    }
 }
