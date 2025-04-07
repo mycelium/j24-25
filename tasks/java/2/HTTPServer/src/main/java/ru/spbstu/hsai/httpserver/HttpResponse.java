@@ -23,6 +23,9 @@ public class HttpResponse {
         this.body = body;
     }
     public void addHeader(String key, String value) { headers.put(key, value); }
+    public HttpStatus getStatus(){
+        return status;
+    }
 
     public byte[] toBytes() {
         StringBuilder response = new StringBuilder();
