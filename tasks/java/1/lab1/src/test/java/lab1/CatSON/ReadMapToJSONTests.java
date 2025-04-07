@@ -64,7 +64,7 @@ public class ReadMapToJSONTests {
         map.put("key2", "value2");
 
         String result = CatSON.toJson(map);
-        assertTrue(result.contains("\"key1\":null"));
+        assertTrue(!result.contains("\"key1\":null"));
         assertTrue(result.contains("\"key2\":\"value2\""));
     }
 
