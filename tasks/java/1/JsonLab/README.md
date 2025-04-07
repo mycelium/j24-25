@@ -96,5 +96,5 @@ Map<String, Object> map = JsonParser.parseStringToClass(jsonMap, Map.class);
 - Библиотека поддерживает поиск и обработку подклассов:
 
 ```java
-List<Class<?>> subclasses = JsonParser.findSubclasses(ParentClass.class, "ru.spbstu.telematics.java");
+List<Class<?>> subclasses = CollectionUtils.findSubclasses(ParentClass.class, "ru.spbstu.telematics.java");
 ```
