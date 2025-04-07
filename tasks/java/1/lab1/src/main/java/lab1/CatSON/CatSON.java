@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.StringJoiner;
+import java.util.stream.Stream;
 
 public class CatSON {
 
@@ -47,6 +48,9 @@ public class CatSON {
         if (obj instanceof Collection) {
             return readCollectionToJSON((Collection<?>) obj);
         }
+        if (obj instanceof Map) {
+            return readMapToJSON((Map<?, ?>) obj);
+        }
         return "err";
 
     }
@@ -87,6 +91,17 @@ public class CatSON {
                 .map(this::toJson)
                 .collect(Collectors.joining(","))
                 + "]";
+    }
+
+    private String readMapToJSON(Map<?, ?> obj) {
+        return "{" + obj
+                .entrySet().stream()
+                .map(entry -> String
+                        .format("%s:%s",
+                                entry.getKey() instanceof Number ?
+                                        "\"" + this.toJson(entry.getKey()) + "\"" :
+                                        this.toJson(entry.getKey()), this.toJson(entry.getValue())))
+                .collect(Collectors.joining(",")) + "}";
     }
 
 }
