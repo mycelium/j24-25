@@ -4,3 +4,8 @@ bin/
 .classpath
 .settings
 out/
+input/
+.idea
+build/
+images/
+users.db
