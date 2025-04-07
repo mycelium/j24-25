@@ -10,11 +10,9 @@ import java.net.URLDecoder;
 
 public class HttpRequest {
     private final String method;
-    private final String path;
     private final String protocol;
     private final Map<String, String> headers = new HashMap<>();
     private final String body;
-    private final Map<String, String> queryParams;
     private Map<String, String> pathParams = new HashMap<>(); // <-- добавим
 
 
@@ -24,15 +22,6 @@ public class HttpRequest {
         this.protocol = protocol;
         this.headers.putAll(headers);
         this.body = body;
-
-        int idx = path.indexOf('?');
-        if (idx >= 0) {
-            this.path = path.substring(0, idx);
-            this.queryParams = parseQueryParams(path.substring(idx + 1));
-        } else {
-            this.path = path;
-            this.queryParams = Collections.emptyMap();
-        }
     }
 
     private Map<String, String> parseQueryParams(String query) {
@@ -86,20 +75,21 @@ public class HttpRequest {
         return new HttpRequest(method, path, protocol, headers, body);
     }
 
-    public String getMethod() { return method; }
-    public String getPath() { return path; }
-    public String getProtocol() { return protocol; }
-    public Map<String, String> getHeaders() { return headers; }
-    public String getBody() { return body; }
-
-    public String getQueryParam(String name) {
-        return queryParams.get(name);
+    public String getMethod() {
+        return method;
     }
-
+    public String getProtocol() {
+        return protocol;
+    }
+    public Map<String, String> getHeaders() {
+        return headers;
+    }
+    public String getBody() {
+        return body;
+    }
     public String getPathParam(String name) {
         return pathParams.get(name);
     }
-
     public void setPathParams(Map<String, String> pathParams) {
         this.pathParams = pathParams;
     }
