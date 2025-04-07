@@ -77,11 +77,11 @@ public class Main {
                 try {
                     Files.delete(Paths.get("files/" + filename));
                     response.setStatus(HttpStatus.Ok);
-                    response.setBody("{\"status\":\"success\",\"message\":\"File %s deleted\"}");
+                    response.setBody("{\"status\":\"success\",\"message\":\"File " + filename + " deleted\"}");
                 } catch (Exception e) {
                     response.setStatus(HttpStatus.NotFound);
                     response.addHeader("Content-Type", "application/json");
-                    response.setBody("{\"error\":\"" + e.getMessage() + "\"}");
+                    response.setBody("{\"error\":\"File not found\"}");
                 }
             });
 
@@ -127,6 +127,7 @@ public class Main {
                     response.setBody("{\"error\":\"Deletion failed\"}");
                 }
             });
+
             server.addHandler(HttpMethods.GET, "/image/:filename", (request, response) -> {
                 String filename = request.getPathParam("filename");
                 try {
@@ -139,11 +140,13 @@ public class Main {
                     response.setBody("File not found");
                 }
             });
+
             server.addHandler(HttpMethods.GET, "/user/:id", (request, response) -> {
-                String id = request.getPathParam("id");
-                    response.setStatus(HttpStatus.Ok);
-                    response.addHeader("Content-Type", "text/plain");
-                    response.setBody(id);
+                String userId = request.getPathParam("id");
+                String jsonResponse = String.format("{\"id\":\"%s\",\"name\":\"User %s\"}", userId, userId);
+                response.setStatus(HttpStatus.Ok);
+                response.addHeader("Content-Type", "application/json");
+                response.setBody(jsonResponse);
             });
             server.start();
         } catch (Exception e) {
