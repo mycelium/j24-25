@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+		https://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <!-- cats -->
+
+    <bean id="publicTail" class="ru.spbstu.java.spring.components.Tail">
+        <property name="length" value="10000"/>
+    </bean>
+
+    <bean id="blackCat" class="ru.spbstu.java.spring.components.Cat">
+        <property name="name" value="Boris"/>
+        <property name="color" value="Black"/>
+        <property name="age" value="5"/>
+        <property name="tail" ref="publicTail"/>
+        <!-- additional collaborators and configuration for this bean go here -->
+    </bean>
+
+    <bean id="greyCat" class="ru.spbstu.java.spring.components.Cat">
+        <property name="name" value="Vasya"/>
+        <property name="color" value="Grey"/>
+        <property name="age" value="3"/>
+        <property name="tail" ref="publicTail"/>
+        <!-- additional collaborators and configuration for this bean go here -->
+    </bean>
+
+    <bean id="redCat" class="ru.spbstu.java.spring.components.Cat">
+        <constructor-arg index="0" value="Kesha"/>
+        <constructor-arg index="1" value="6"/>
+        <constructor-arg index="2" value="Red"/>
+        <constructor-arg index="3" ref="publicTail"/>
+        <!-- additional collaborators and configuration for this bean go here -->
+    </bean>
+
+    <!-- more bean definitions for services go here -->
+
+</beans>
