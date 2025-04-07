@@ -2,19 +2,25 @@ package ru.spbstu.hsai.imgen.components.user.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.spbstu.hsai.imgen.components.user.dao.UserDaoImpl;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import ru.spbstu.hsai.imgen.components.user.dao.UserDao;
 import ru.spbstu.hsai.imgen.components.user.entities.UserEntity;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Service
 public class UserService {
     private Map<String, UserEntity> authConnections = new ConcurrentHashMap<>();
-    private UserDao userDao = UserDaoImpl.getInstance();
+
+    @Autowired
+    private UserDao userDao;
+
     static Logger logger = LoggerFactory.getLogger(UserService.class);
 
     public Collection<UserEntity> getAllUsers(){
-        return userDao.getAllUsers();
+        return userDao.findAll();
     }
 
     public Optional<String> authentificate(String login, String password){
@@ -32,21 +38,8 @@ public class UserService {
     }
 
     public Optional<UserEntity> getUserByLoginAndPassword(String login, String passwordHash){
-        return userDao.getUserByLoginAndPassword(login, passwordHash);
+        return userDao.findByLoginAndPassword(login, passwordHash);
     }
 
-    private static volatile UserService instance;
-    private static final Object monitor = new Object();
-
-    public static UserService getInstance() {
-        if (instance == null) {
-            synchronized (monitor) {
-                if (instance == null) {
-                    instance = new UserService();
-                }
-            }
-        }
-        return instance;
-    }
 
 }

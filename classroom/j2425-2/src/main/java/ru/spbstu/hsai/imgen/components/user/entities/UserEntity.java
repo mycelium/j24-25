@@ -1,17 +1,24 @@
 package ru.spbstu.hsai.imgen.components.user.entities;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
+import jakarta.persistence.Entity;
+
+
+@Entity
+@Table("users")
 public class UserEntity {
+    @Id
+    @Column("userID")
+    private Integer userId;
 
-   private Integer userId;
-   private  String login;
-   private  String password;
-   private Integer quota;
-
-    public UserEntity(Integer userId, String login, Integer quota) {
-        this.login = login;
-        this.userId = userId;
-        this.quota = quota;
-    }
+    @Column("login")
+    private String login;
+    @Column("password")
+    private String password;
+    @Column("quota")
+    private Integer quota;
 
     public Integer getUserId() {
         return userId;

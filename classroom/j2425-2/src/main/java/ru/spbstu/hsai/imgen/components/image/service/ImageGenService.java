@@ -2,25 +2,23 @@ package ru.spbstu.hsai.imgen.components.image.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.spbstu.hsai.imgen.components.image.api.external.JanusAiSDK;
-import ru.spbstu.hsai.imgen.components.image.api.socket.ImageGenController;
-import ru.spbstu.server.HttpClient;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 
+@Service
 public class ImageGenService {
 
-    ImageGenApi imageGenApi = JanusAiSDK.getInstance();
+    @Autowired
+    ImageGenApi imageGenApi;
     private static Logger logger = LoggerFactory.getLogger(ImageGenService.class);
-
 
     public Optional<Path> generateImage(String prompt) {
         Optional<String> optUrl = imageGenApi.generateImage(prompt + ";realistic,4k,gotic style");
@@ -43,24 +41,6 @@ public class ImageGenService {
         }
 
         return Optional.of(imagePath);
-    }
-
-    private ImageGenService(){
-
-    }
-
-    private static volatile ImageGenService instance;
-    private static final Object monitor = new Object();
-
-    public static ImageGenService getInstance() {
-        if (instance == null) {
-            synchronized (monitor) {
-                if (instance == null) {
-                    instance = new ImageGenService();
-                }
-            }
-        }
-        return instance;
     }
 
 }
