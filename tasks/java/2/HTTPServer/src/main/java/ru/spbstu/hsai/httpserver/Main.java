@@ -2,12 +2,11 @@ package ru.spbstu.hsai.httpserver;
 import ru.spbstu.hsai.httpserver.common.HttpMethods;
 import ru.spbstu.hsai.httpserver.common.HttpStatus;
 
-import java.io.IOException;
 import java.nio.file.*;
 import com.google.gson.*;
 
 public class Main {
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         try (HttpServer server = new HttpServer("localhost", 35000, 4, true)) {
 
             server.addHandler(HttpMethods.GET, "/files/:filename", (request, response) -> {
@@ -86,7 +85,7 @@ public class Main {
                 }
             });
 
-            server.addHandler(HttpMethods.PUT, "/file-operations/merge", (request, response) -> {
+            server.addHandler(HttpMethods.PUT, "/file-merge", (request, response) -> {
                 try {
                     JsonObject json = JsonParser.parseString(request.getBody()).getAsJsonObject();
                     String sourceFile = json.get("source").getAsString();
