@@ -1,4 +1,5 @@
 # HTTP Server
+# Для полной проверки можно использовать 'curl -X -d "что-то" http://localhost:8080/linkN', где 1 > N >= 4 && 'curl -X -d DELETE http...8080/delete' 
 ## Сервер
 
 - **HTTP методы**: поддерживаются GET, POST, PUT, PATCH, DELETE.
